@@ -99,6 +99,7 @@ State writes to `AppPaths.dataDir`; IPC + queue snapshots to `ipcDir`.
 | `SpeakerNamingView.swift` | Speaker naming dialog after diarization |
 | `KnownVoicesView.swift` | Manage persisted speaker DB (rename, delete, merge) — embedded in `SpeakersSettingsView` |
 | `RecognitionStatsView.swift` | Recognition stats display — aggregate counts from `recognition_log.jsonl` |
+| `ProcessingStatsView.swift` | Surfaces average per-stage processing durations from `stage_timing.jsonl` so the user can tell whether a long transcription/diarization is normal |
 | `VoiceEnrollmentView.swift` | Voice enrollment sheet — seeds `speakers.json` from an existing audio file |
 | `AppSettings.swift` | `@Observable` settings persisted to UserDefaults |
 | `Settings/PickerLanguages.swift` | Language picker entries for WhisperKit and Parakeet language selectors |
@@ -126,13 +127,21 @@ State writes to `AppPaths.dataDir`; IPC + queue snapshots to `ipcDir`.
 | `StreamingTranscriber.swift` | Per-channel live transcription actor (FluidVAD streaming → `engine.transcribeSamples` → partial/final captions) |
 | `PipelineQueue.swift` | Decouples recording from post-processing, sequential job pipeline |
 | `PipelineJob.swift` | Pipeline job model (waiting → transcribing → diarizing → generatingProtocol → done) |
+| `StageTimingStats.swift` | Per-stage wall-clock duration tracking — appends to `stage_timing.jsonl`, reader feeds `ProcessingStatsView` |
+| `SpeakerNamingData.swift` | Speaker-naming value types (`PipelineQueue.SpeakerNamingData`, `.Segment`, `.Result`) extracted from `PipelineQueue` (namespace-only split) |
+| `SpeakerNamingSession.swift` | Speaker-naming session collaborator — id-based job addressing avoids stale-index bugs across `await` boundaries |
+| `SpeakerNamingSession+Late.swift` | Late-confirm and re-diarization paths, split from `SpeakerNamingSession` (line-cap split) |
+| `SpeakerNamingStore.swift` | Disk persistence for per-job speaker-naming sidecars (keyed by slug under `outputDir/recordings/`) |
 | `PipelineSnapshot.swift` | Pure I/O helpers for persisting `PipelineQueue` jobs to disk (atomic rename) |
 | `SnapshotWriterActor.swift` | Actor isolating pipeline queue snapshot writes (prevents main-actor stalls on macOS 26 rename deadlock) |
 | `LiveTranscriptionController.swift` | Wires `StreamingTranscriber` to both `DualSourceRecorder` sinks (mic + app), feeds `LiveCaptionsState` (PoC) |
+| `LiveTranscriptionController+Nemotron.swift` | Nemotron streaming-pipeline construction (shared model load across channels), split from `LiveTranscriptionController` (line-cap split) |
 | `LiveTranscriptionCoordinator.swift` | `@Observable` coordinator: builds + arms `LiveTranscriptionController`, feeds `LiveCaptionsState` |
-| `LiveCaptionPipeline.swift` | Per-channel live captioning strategy protocol (WhisperKit word-level \| EOU streaming) |
+| `LiveCaptionPipeline.swift` | Per-channel live captioning strategy protocol (WhisperKit word-level \| EOU streaming \| Nemotron streaming) |
 | `LiveCaptionsGate.swift` | Pure decision logic for live captions routing — which pipeline per channel; shared by `AppState`, coordinator, and controller |
 | `EouStreamingCaptionSession.swift` | EOU streaming caption session via FluidAudio end-of-utterance ASR, backed by `UtteranceRingBuffer` |
+| `NemotronStreamingCaptionSession.swift` | Nemotron streaming caption session for live captions — drives `FluidAudio.StreamingNemotronMultilingualAsrManager` behind injectable seams for unit-testability |
+| `NemotronAsrManager.swift` | Production FluidAudio Nemotron + Silero VAD implementations of the `NemotronStreamingAsrManaging` / `UtteranceBoundaryDetecting` seams |
 | `UtteranceRingBuffer.swift` | Rolling 16 kHz sample buffer addressable by absolute ms timestamp (feeds EOU streaming session) |
 | `EngineController.swift` | `@Observable @MainActor` engine selection + model lifecycle controller (language/vocabulary sync, preload) |
 | `PipelineController.swift` | `@Observable` controller owning `PipelineQueue` lifecycle (wired by `AppState`) |
@@ -201,6 +210,7 @@ State writes to `AppPaths.dataDir`; IPC + queue snapshots to `ipcDir`.
 | `AppPaths.swift` | Centralized path constants (ipcDir, dataDir, logSubsystem, speakersDB) |
 | `AXHelper.swift` | Shared accessibility API helper (MuteDetector + ParticipantReader) |
 | `NotificationManager.swift` | macOS notifications |
+| `NotificationRingBuffer.swift` | Bounded FIFO log of recent app notifications for the `/state.notifications` RPC snapshot (`#if !APPSTORE`) |
 | `KeychainHelper.swift` | Legacy keychain CRUD (token now file-based) |
 | `RecognitionStats.swift` | Recognition event model + `recognition_log.jsonl` reader/writer — backs `RecognitionStatsView` |
 | `Permissions.swift` | Mic/accessibility permissions, project root detection |
@@ -209,6 +219,9 @@ State writes to `AppPaths.dataDir`; IPC + queue snapshots to `ipcDir`.
 | `ParticipantReader.swift` | Teams participant extraction via Accessibility API |
 | `DebugRPCServer.swift` | Embedded HTTP RPC server for shell-driven inspection. `#if !APPSTORE`, opt-in via `MEETINGTRANSCRIBER_DEBUG_RPC=1`. Bearer-token + Origin reject; binds 127.0.0.1 only |
 | `AppState+RPC.swift` | Builds `RPCStateSnapshot` from live `AppState` for the `/state` endpoint (`#if !APPSTORE`) |
+| `AppSettings+RPC.swift` | Builds the read-only settings projection for the `/state` snapshot from inside `AppSettings` (`#if !APPSTORE`) |
+| `EngineModelState.swift` | App-owned model lifecycle state enum (`unloaded / downloading / loading / loaded`), decoupled from WhisperKit's `ModelState`; RPC wire contract for engine status |
+| `IdempotencyStore.swift` | Bounded FIFO idempotency-key → job-ID map so repeated automation requests carrying the same key return the original job (`#if !APPSTORE`) |
 | `RPCStateSnapshot.swift` | JSON-serializable RPC state snapshot type (`#if !APPSTORE`) |
 | `Bundle+AppVersion.swift` | Bundle extension: `appVersion` + `gitCommitHash` from `Info.plist` |
 | `DiagnosticExporter.swift` | Reads log entries and writes shareable `.log` file (Settings → Advanced → Export Diagnostics) |
