@@ -134,32 +134,47 @@ enum ProtocolGenerator {
 
     private static let filenameFormatter: DateFormatter = {
         let fmt = DateFormatter()
-        fmt.dateFormat = "yyyyMMdd_HHmm"
+        fmt.dateFormat = "yyyy-MM-dd-HHmm"
         return fmt
     }()
 
-    /// Sanitize a title into a safe filename slug (path-traversal safe).
-    /// Falls back to `"meeting"` if no allowed characters remain.
+    /// Characters kept verbatim in a slug; everything else becomes a separator.
     private static let slugAllowed = CharacterSet.alphanumerics
-        .union(CharacterSet(charactersIn: "-_"))
 
+    /// Sanitize a title into a safe filename slug (path-traversal safe):
+    /// lowercased, every run of non-alphanumeric characters collapsed to a
+    /// single `-`, and leading/trailing dashes trimmed. Returns `""` when no
+    /// usable characters remain — `filename` then omits the slug entirely
+    /// rather than substituting a placeholder.
     static func sanitizeSlug(_ title: String) -> String {
-        let slug = String(stripExistingTimestampPrefix(title)
-            .lowercased()
-            .replacingOccurrences(of: " ", with: "_")
-            .unicodeScalars
-            .filter { slugAllowed.contains($0) }
-            .map(Character.init))
-        return slug.isEmpty ? "meeting" : slug
+        let normalized = stripExistingTimestampPrefix(title).lowercased()
+        var slug = ""
+        var pendingSeparator = false
+        for scalar in normalized.unicodeScalars {
+            if slugAllowed.contains(scalar) {
+                if pendingSeparator, !slug.isEmpty { slug.append("-") }
+                pendingSeparator = false
+                slug.unicodeScalars.append(scalar)
+            } else {
+                pendingSeparator = true
+            }
+        }
+        return slug
     }
 
     /// Re-importing a previously-processed recording feeds its slug-based stem
-    /// back as a title (e.g. `20260516_1319_20260503_174538`). `filename` would
-    /// then prepend ANOTHER `yyyyMMdd_HHmm_` → compounding-prefix loop on every
-    /// reprocess. Strip a leading `yyyyMMdd_HHmm[ss]_` so the slug stays
-    /// idempotent across reprocesses.
+    /// back as a title (e.g. `2026-05-16-1319-2026-05-03-1745`). `filename`
+    /// would then prepend ANOTHER timestamp → compounding-prefix loop on every
+    /// reprocess. Strip a leading timestamp so the slug stays idempotent. Three
+    /// forms are recognised: the current note format `yyyy-MM-dd-HHmm-`, the
+    /// recorder's native `yyyyMMdd_HHmmss_`, and the legacy note format
+    /// `yyyyMMdd_HHmm_` (older on-disk files).
     static func stripExistingTimestampPrefix(_ title: String) -> String {
-        let patterns = [#"^\d{8}_\d{6}_"#, #"^\d{8}_\d{4}_"#]
+        let patterns = [
+            #"^\d{4}-\d{2}-\d{2}-\d{4}-"#,
+            #"^\d{8}_\d{6}_"#,
+            #"^\d{8}_\d{4}_"#,
+        ]
         var result = title
         // Apply repeatedly — input may already contain multiple compounded layers
         // from earlier buggy runs; one call should normalize the worst case.
@@ -176,11 +191,13 @@ enum ProtocolGenerator {
         return result.isEmpty ? title : result
     }
 
-    /// Generate a filename: `{yyyyMMdd_HHmm}_{slug}.{ext}`
+    /// Generate a filename: `{yyyy-MM-dd-HHmm}-{slug}.{ext}`, or
+    /// `{yyyy-MM-dd-HHmm}.{ext}` when the title yields no slug.
     static func filename(title: String, ext: String) -> String {
         let date = filenameFormatter.string(from: Date())
         let slug = sanitizeSlug(title)
-        return "\(date)_\(slug).\(ext)"
+        let base = slug.isEmpty ? date : "\(date)-\(slug)"
+        return "\(base).\(ext)"
     }
 }
 

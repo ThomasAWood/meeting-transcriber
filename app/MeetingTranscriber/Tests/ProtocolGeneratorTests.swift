@@ -77,19 +77,31 @@ final class ProtocolGeneratorTests: XCTestCase {
 
     func testFilenameFormat() {
         let name = ProtocolGenerator.filename(title: "Team Meeting", ext: "md")
-        // Format: yyyyMMdd_HHmm_team_meeting.md
-        XCTAssertTrue(name.hasSuffix("_team_meeting.md"))
-        // Should start with date pattern (8 digits _ 4 digits)
-        let prefix = String(name.prefix(13))
+        // Format: yyyy-MM-dd-HHmm-team-meeting.md
+        XCTAssertTrue(name.hasSuffix("-team-meeting.md"))
+        // Should start with dashed date-time pattern: 2026-07-09-1430 (15 chars)
+        let prefix = String(name.prefix(15))
         XCTAssertNotNil(
-            prefix.range(of: #"^\d{8}_\d{4}$"#, options: .regularExpression),
+            prefix.range(of: #"^\d{4}-\d{2}-\d{2}-\d{4}$"#, options: .regularExpression),
             "Expected date prefix, got: \(prefix)",
         )
     }
 
     func testFilenameSlugLowercase() {
         let name = ProtocolGenerator.filename(title: "Daily Standup", ext: "txt")
-        XCTAssertTrue(name.contains("daily_standup"))
+        XCTAssertTrue(name.contains("daily-standup"))
+    }
+
+    func testFilenameNoTitleOmitsSlug() {
+        // A title with no usable characters produces a timestamp-only name with
+        // no trailing separator and no "meeting" fallback.
+        for title in ["", "   ", "///"] {
+            let name = ProtocolGenerator.filename(title: title, ext: "md")
+            XCTAssertNotNil(
+                name.range(of: #"^\d{4}-\d{2}-\d{2}-\d{4}\.md$"#, options: .regularExpression),
+                "Expected timestamp-only name for title=\(title.debugDescription), got: \(name)",
+            )
+        }
     }
 
     func testFilenameExtension() {
@@ -105,30 +117,30 @@ final class ProtocolGeneratorTests: XCTestCase {
     func testFilenameSanitizesSlashes() {
         let name = ProtocolGenerator.filename(title: "Code/Review", ext: "md")
         XCTAssertFalse(name.contains("/"))
-        XCTAssertTrue(name.contains("codereview"))
+        XCTAssertTrue(name.contains("code-review"))
     }
 
     func testFilenameSanitizesColons() {
         let name = ProtocolGenerator.filename(title: "Meeting: Planning", ext: "md")
         XCTAssertFalse(name.contains(":"))
-        XCTAssertTrue(name.contains("meeting_planning"))
+        XCTAssertTrue(name.contains("meeting-planning"))
     }
 
     func testFilenameSanitizesBackslashes() {
         let name = ProtocolGenerator.filename(title: "Path\\Name", ext: "md")
         XCTAssertFalse(name.contains("\\"))
-        XCTAssertTrue(name.contains("pathname"))
+        XCTAssertTrue(name.contains("path-name"))
     }
 
     func testFilenameSanitizesNullBytes() {
         let name = ProtocolGenerator.filename(title: "Test\0Title", ext: "md")
         XCTAssertFalse(name.contains("\0"))
-        XCTAssertTrue(name.contains("testtitle"))
+        XCTAssertTrue(name.contains("test-title"))
     }
 
     func testFilenameSanitizesMultipleForbiddenChars() {
         let name = ProtocolGenerator.filename(title: "A/B:C\\D", ext: "txt")
-        XCTAssertTrue(name.hasSuffix("_abcd.txt"))
+        XCTAssertTrue(name.hasSuffix("-a-b-c-d.txt"))
     }
 
     // MARK: - Slug Sanitization (Path Traversal Prevention)
@@ -139,14 +151,22 @@ final class ProtocolGeneratorTests: XCTestCase {
         XCTAssertFalse(slug.contains(".."), "Slug must not contain parent directory traversal")
     }
 
-    func testSanitizeSlugPreservesAlphanumericAndHyphens() {
+    func testSanitizeSlugLowercasesAndDashesSeparators() {
         let slug = ProtocolGenerator.sanitizeSlug("Team-Meeting 2024")
-        XCTAssertEqual(slug, "team-meeting_2024")
+        XCTAssertEqual(slug, "team-meeting-2024")
     }
 
-    func testSanitizeSlugEmptyTitleFallback() {
-        let slug = ProtocolGenerator.sanitizeSlug("///")
-        XCTAssertEqual(slug, "meeting")
+    func testSanitizeSlugCollapsesRunsAndTrimsEdges() {
+        // Runs of non-alphanumerics collapse to a single dash; leading/trailing
+        // separators are trimmed.
+        XCTAssertEqual(ProtocolGenerator.sanitizeSlug("  Q3 // Review!!  "), "q3-review")
+    }
+
+    func testSanitizeSlugEmptyWhenNoAlphanumerics() {
+        // No usable characters → empty slug (filename drops it entirely; there
+        // is no "meeting" fallback anymore).
+        XCTAssertEqual(ProtocolGenerator.sanitizeSlug("///"), "")
+        XCTAssertEqual(ProtocolGenerator.sanitizeSlug(""), "")
     }
 
     func testFilenameWithPathTraversalTitle() {
@@ -197,7 +217,7 @@ final class ProtocolGeneratorTests: XCTestCase {
         let url = try ProtocolGenerator.saveTranscript(text, title: "Test", dir: tmpDir)
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
-        XCTAssertTrue(url.lastPathComponent.hasSuffix("_test.txt"))
+        XCTAssertTrue(url.lastPathComponent.hasSuffix("-test.txt"))
 
         let loaded = try String(contentsOf: url, encoding: .utf8)
         XCTAssertEqual(loaded, text)
@@ -210,7 +230,7 @@ final class ProtocolGeneratorTests: XCTestCase {
         let url = try ProtocolGenerator.saveProtocol(markdown, title: "Standup", dir: tmpDir)
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
-        XCTAssertTrue(url.lastPathComponent.hasSuffix("_standup.md"))
+        XCTAssertTrue(url.lastPathComponent.hasSuffix("-standup.md"))
 
         let loaded = try String(contentsOf: url, encoding: .utf8)
         XCTAssertEqual(loaded, markdown)
@@ -402,6 +422,15 @@ final class ProtocolGeneratorTests: XCTestCase {
         )
     }
 
+    func testStripExistingTimestampPrefix_dashedNoteFormat() {
+        // The new note format `yyyy-MM-dd-HHmm-<slug>` must also be stripped so
+        // re-importing a previously-saved note stem doesn't compound.
+        XCTAssertEqual(
+            ProtocolGenerator.stripExistingTimestampPrefix("2026-07-09-1430-daily-standup"),
+            "daily-standup",
+        )
+    }
+
     func testStripExistingTimestampPrefix_noPrefix() {
         XCTAssertEqual(
             ProtocolGenerator.stripExistingTimestampPrefix("Daily standup"),
@@ -424,10 +453,11 @@ final class ProtocolGeneratorTests: XCTestCase {
         let result = ProtocolGenerator.filename(
             title: "20260516_1319_20260503_174538", ext: "md",
         )
-        // Today's timestamp + the original recording timestamp, NOT today's twice.
-        XCTAssertTrue(result.hasSuffix("_20260503_174538.md"), "got: \(result)")
+        // Today's timestamp + the original recording timestamp (slugified with
+        // dashes), NOT today's twice.
+        XCTAssertTrue(result.hasSuffix("-20260503-174538.md"), "got: \(result)")
         XCTAssertFalse(
-            result.contains("_20260516_1319_"),
+            result.contains("20260516"),
             "yesterday's prefix should have been stripped: \(result)",
         )
     }
