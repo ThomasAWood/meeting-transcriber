@@ -15,11 +15,33 @@ private let logger = Logger(subsystem: "com.meetingtranscriber.audiotap", catego
 /// `isRunning` — are instead `OSAllocatedUnfairLock`-backed so each access is
 /// atomic. `@unchecked Sendable` reflects that this serialization is manual
 /// rather than expressible to the compiler.
+/// Selects which processes' output audio a `CATapDescription` captures.
+public enum CaptureScope: Sendable {
+    /// Mixdown of the given process PIDs (the original behaviour). For
+    /// Electron/WebView2 apps the recorder layer expands the root PID into
+    /// its helper tree before constructing the scope.
+    case processes([pid_t])
+    /// Global tap capturing **all** processes' output audio (system-wide).
+    /// Implemented as a global tap that excludes nothing, so every process
+    /// that produces audio is included. No PID resolution is required, which
+    /// lets calendar-driven recording start without knowing which app to
+    /// capture.
+    case systemWide
+}
+
 @available(macOS 14.2, *)
 public class AppAudioCapture: @unchecked Sendable {
+    /// The configured capture scope. Drives tap-description creation in
+    /// `startCapture()`: a per-process mixdown vs. a global system-wide tap.
+    public let scope: CaptureScope
+    /// Process PIDs for the `.processes` scope; empty for `.systemWide`.
     /// `internal` (not `private`) so the cross-file `+PIDTranslation`
-    /// extension can read it; it's not otherwise touched from outside.
-    let pids: [pid_t]
+    /// extension can read it; it's a computed view over `scope` so the
+    /// PID-translation path stays unchanged.
+    var pids: [pid_t] {
+        if case let .processes(ps) = scope { return ps }
+        return []
+    }
     /// `sampleRate` and `liveSink` are `internal` (not `private`) so the
     /// cross-file `+LiveSink` extension can populate the live buffer struct.
     let sampleRate: Int
@@ -101,11 +123,11 @@ public class AppAudioCapture: @unchecked Sendable {
     private var deviceChangeCoordinator = OutputDeviceChangeCoordinator()
 
     /// - Parameters:
-    ///   - pids: Process IDs to capture audio from. Pass the meeting app's
-    ///     root PID plus its helper/renderer child PIDs for Electron-based
-    ///     apps (Teams 2.x, Slack, Discord); pass a single-element array
-    ///     for native Cocoa apps. Helpers whose `translatePIDToProcessObject`
-    ///     lookup fails (no audio-object entry) are skipped silently.
+    ///   - scope: Which audio to capture. `.processes([pids])` mixes down the
+    ///     given process PIDs — pass the meeting app's root PID plus its
+    ///     helper/renderer child PIDs for Electron-based apps (Teams 2.x,
+    ///     Slack, Discord), or a single-element array for native Cocoa apps.
+    ///     `.systemWide` captures all system output audio (no PID resolution).
     ///   - outputFileDescriptor: File descriptor to write raw PCM data to.
     ///   - sampleRate: Desired sample rate (default 48000).
     ///   - channels: Number of audio channels (default 2).
@@ -115,6 +137,26 @@ public class AppAudioCapture: @unchecked Sendable {
     ///     Called on the audio IOProc thread — must not block. Nil = no-op,
     ///     existing batch path unchanged.
     public init(
+        scope: CaptureScope,
+        outputFileDescriptor: Int32,
+        sampleRate: Int = 48000,
+        channels: Int = 2,
+        debugLogging: Bool = false,
+        liveSink: LiveAudioSink? = nil,
+    ) {
+        self.scope = scope
+        self.outputFileDescriptor = outputFileDescriptor
+        self.sampleRate = sampleRate
+        self.channels = channels
+        self.debugLogging = debugLogging
+        self.liveSink = liveSink
+        resampler = StreamingMonoResampler(targetRate: Int(speechSampleRate))
+    }
+
+    /// Convenience for the per-process scope (original behaviour). Maps to
+    /// `init(scope: .processes(pids), ...)`. Kept so existing callers and
+    /// tests are unchanged.
+    public convenience init(
         pids: [pid_t],
         outputFileDescriptor: Int32,
         sampleRate: Int = 48000,
@@ -122,13 +164,14 @@ public class AppAudioCapture: @unchecked Sendable {
         debugLogging: Bool = false,
         liveSink: LiveAudioSink? = nil,
     ) {
-        self.pids = pids
-        self.outputFileDescriptor = outputFileDescriptor
-        self.sampleRate = sampleRate
-        self.channels = channels
-        self.debugLogging = debugLogging
-        self.liveSink = liveSink
-        resampler = StreamingMonoResampler(targetRate: Int(speechSampleRate))
+        self.init(
+            scope: .processes(pids),
+            outputFileDescriptor: outputFileDescriptor,
+            sampleRate: sampleRate,
+            channels: channels,
+            debugLogging: debugLogging,
+            liveSink: liveSink,
+        )
     }
 
     public func start() throws {
@@ -263,30 +306,57 @@ public class AppAudioCapture: @unchecked Sendable {
         return validated.rate
     }
 
+    /// Human-readable scope label for logs and error messages.
+    private var scopeDescription: String {
+        switch scope {
+        case .processes: "pids=\(pids)"
+        case .systemWide: "system-wide"
+        }
+    }
+
+    /// Build the `CATapDescription` for the configured scope.
+    ///
+    /// - `.processes`: resolves PIDs to CoreAudio process objects and builds a
+    ///   stereo mixdown of exactly those processes (throws when none translate).
+    /// - `.systemWide`: a global tap excluding nothing → every process's output
+    ///   audio is included. No PID resolution, so calendar-driven recording can
+    ///   start without knowing which app to capture.
+    private func makeTapDescription() throws -> CATapDescription {
+        switch scope {
+        case .processes:
+            let translated = try translatePIDs()
+            let processObjectIDs = translated.map(\.audioObjectID)
+
+            // Always log at info level with exe names so a "silent _app.wav"
+            // report can be triaged without the user toggling Verbose Audio
+            // Logging first — process names like "MSTeams Helper (Renderer)"
+            // make issue-#84-style failures actionable.
+            let tapSummary = translated.map { "\(getExecutableName(pid: $0.pid))(\($0.pid))" }.joined(separator: ", ")
+            logger.info(
+                "App audio tap: \(translated.count) PID(s) [\(tapSummary, privacy: .public)]",
+            )
+
+            if debugLogging {
+                for entry in translated {
+                    let bundleID = getProcessBundleID(entry.audioObjectID) ?? "?"
+                    let exeName = getExecutableName(pid: entry.pid)
+                    logger.info(
+                        "[debug] Tap target: pid=\(entry.pid, privacy: .public) exe=\(exeName, privacy: .public) bundle=\(bundleID, privacy: .public) audioObjectID=\(entry.audioObjectID, privacy: .public)",
+                    )
+                }
+            }
+
+            return CATapDescription(stereoMixdownOfProcesses: processObjectIDs)
+
+        case .systemWide:
+            logger.info("App audio tap: system-wide (all processes)")
+            // Global tap excluding nothing = the full system output mix.
+            return CATapDescription(stereoGlobalTapButExcludeProcesses: [])
+        }
+    }
+
     // swiftlint:disable:next function_body_length
     private func startCapture() throws {
-        let translated = try translatePIDs()
-        let processObjectIDs = translated.map(\.audioObjectID)
-
-        // Always log at info level with exe names so a "silent _app.wav"
-        // report can be triaged without the user toggling Verbose Audio
-        // Logging first — process names like "MSTeams Helper (Renderer)"
-        // make issue-#84-style failures actionable.
-        let tapSummary = translated.map { "\(getExecutableName(pid: $0.pid))(\($0.pid))" }.joined(separator: ", ")
-        logger.info(
-            "App audio tap: \(translated.count) PID(s) [\(tapSummary, privacy: .public)]",
-        )
-
-        if debugLogging {
-            for entry in translated {
-                let bundleID = getProcessBundleID(entry.audioObjectID) ?? "?"
-                let exeName = getExecutableName(pid: entry.pid)
-                logger.info(
-                    "[debug] Tap target: pid=\(entry.pid, privacy: .public) exe=\(exeName, privacy: .public) bundle=\(bundleID, privacy: .public) audioObjectID=\(entry.audioObjectID, privacy: .public)",
-                )
-            }
-        }
-
         // Get default output device UID
         guard let systemOutputUID = getDefaultOutputDeviceUID() else {
             throw NSError(
@@ -305,10 +375,10 @@ public class AppAudioCapture: @unchecked Sendable {
             )
         }
 
-        // Create CATapDescription for the target process(es). For Electron
-        // apps this covers the helper tree so the renderer holding the audio
-        // handle is included; for native apps the array is a single PID.
-        let tap = CATapDescription(stereoMixdownOfProcesses: processObjectIDs)
+        // Build the CATapDescription for the configured scope: a per-process
+        // mixdown (original behaviour, Electron helper tree included) or a
+        // global system-wide tap (all processes, no PID resolution).
+        let tap = try makeTapDescription()
         tap.uuid = UUID()
         tap.name = "MeetingTranscriber-tap"
         tap.isPrivate = true
@@ -319,7 +389,7 @@ public class AppAudioCapture: @unchecked Sendable {
         guard tapStatus == noErr else {
             let hint = Self.describeTapError(tapStatus)
             logger.error(
-                "Failed to create process tap (pids=\(self.pids, privacy: .public)): \(hint, privacy: .public)",
+                "Failed to create process tap (\(self.scopeDescription, privacy: .public)): \(hint, privacy: .public)",
             )
             throw NSError(
                 domain: "audiotap", code: Int(tapStatus),
@@ -336,9 +406,15 @@ public class AppAudioCapture: @unchecked Sendable {
             )
         }
 
-        // Create aggregate device with the tap. The name embeds the root PID
-        // (first entry) — purely cosmetic for `system_profiler SPAudioDataType`.
-        let nameTag = pids.first.map(String.init) ?? "0"
+        // Create aggregate device with the tap. The name embeds a scope tag
+        // (root PID for per-process, "sys" for system-wide) — purely cosmetic
+        // for `system_profiler SPAudioDataType`.
+        let nameTag: String = {
+            switch scope {
+            case let .processes(pids): return pids.first.map(String.init) ?? "0"
+            case .systemWide: return "sys"
+            }
+        }()
         let desc: [String: Any] = [
             kAudioAggregateDeviceNameKey as String: "audiotap-\(nameTag)",
             kAudioAggregateDeviceUIDKey as String: UUID().uuidString,
@@ -468,7 +544,7 @@ public class AppAudioCapture: @unchecked Sendable {
 
         isRunning = true
 
-        logger.info("Audio capture started (PIDs \(self.pids), rate: \(self.actualSampleRate) Hz)")
+        logger.info("Audio capture started (\(self.scopeDescription, privacy: .public), rate: \(self.actualSampleRate) Hz)")
     }
 
     private func stopCapture() {

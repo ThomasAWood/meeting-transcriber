@@ -7,7 +7,7 @@ private let logger = Logger(subsystem: "com.meetingtranscriber.audiotap", catego
 /// Replaces the CLI entry point — call `start()` and `stop()` directly from the host app.
 @available(macOS 14.2, *)
 public class AudioCaptureSession {
-    private let pids: [pid_t]
+    private let scope: CaptureScope
     private let sampleRate: Int
     private let channels: Int
     private let appOutputURL: URL
@@ -24,10 +24,10 @@ public class AudioCaptureSession {
     private var micCapture: MicCaptureHandler?
     private var appFileHandle: FileHandle?
 
-    /// - Parameter pids: PIDs to capture audio from. For Electron/WebView2
-    ///   apps (Teams 2.x, Slack, Discord) this should include the root PID
-    ///   plus helper/renderer children; for native Cocoa apps a
-    ///   single-element array is fine.
+    /// - Parameter scope: Which processes to capture. `.processes([pids])`
+    ///   for a specific app (Electron helper tree should be expanded by the
+    ///   caller for Teams/Slack/Discord); `.systemWide` for all system output
+    ///   audio (no PID resolution — used by calendar-driven recording).
     /// - Parameter appLiveSink: Optional real-time buffer callback for the app
     ///   audio track (CATap output, interleaved Float32 at the tap's native
     ///   rate, typically 48 kHz). Called from the IOProc thread — non-blocking.
@@ -35,6 +35,32 @@ public class AudioCaptureSession {
     ///   track (mono Float32 at file rate, typically 16 kHz post-resample).
     ///   Called from the AVAudioEngine tap thread — non-blocking.
     public init(
+        scope: CaptureScope,
+        appOutputURL: URL,
+        sampleRate: Int = 48000,
+        channels: Int = 2,
+        micOutputURL: URL? = nil,
+        micDeviceUID: String? = nil,
+        debugLogging: Bool = false,
+        appLiveSink: LiveAudioSink? = nil,
+        micLiveSink: LiveAudioSink? = nil,
+        micDebugFault: DebugTapFault? = nil,
+    ) {
+        self.scope = scope
+        self.sampleRate = sampleRate
+        self.channels = channels
+        self.appOutputURL = appOutputURL
+        self.micOutputURL = micOutputURL
+        self.micDeviceUID = micDeviceUID
+        self.debugLogging = debugLogging
+        self.appLiveSink = appLiveSink
+        self.micLiveSink = micLiveSink
+        self.micDebugFault = micDebugFault
+    }
+
+    /// Convenience for the per-process scope (original behaviour). Maps to
+    /// `init(scope: .processes(pids), ...)`.
+    public convenience init(
         pids: [pid_t],
         appOutputURL: URL,
         sampleRate: Int = 48000,
@@ -46,16 +72,26 @@ public class AudioCaptureSession {
         micLiveSink: LiveAudioSink? = nil,
         micDebugFault: DebugTapFault? = nil,
     ) {
-        self.pids = pids
-        self.sampleRate = sampleRate
-        self.channels = channels
-        self.appOutputURL = appOutputURL
-        self.micOutputURL = micOutputURL
-        self.micDeviceUID = micDeviceUID
-        self.debugLogging = debugLogging
-        self.appLiveSink = appLiveSink
-        self.micLiveSink = micLiveSink
-        self.micDebugFault = micDebugFault
+        self.init(
+            scope: .processes(pids),
+            appOutputURL: appOutputURL,
+            sampleRate: sampleRate,
+            channels: channels,
+            micOutputURL: micOutputURL,
+            micDeviceUID: micDeviceUID,
+            debugLogging: debugLogging,
+            appLiveSink: appLiveSink,
+            micLiveSink: micLiveSink,
+            micDebugFault: micDebugFault,
+        )
+    }
+
+    /// Human-readable scope label for the start log.
+    private var scopeLogLabel: String {
+        switch scope {
+        case let .processes(pids): return "PIDs \(pids)"
+        case .systemWide: return "system-wide"
+        }
     }
 
     /// Start capturing app audio (and optionally mic audio).
@@ -70,7 +106,7 @@ public class AudioCaptureSession {
         let handle = try FileHandle(forWritingTo: appOutputURL)
 
         let capture = AppAudioCapture(
-            pids: pids,
+            scope: scope,
             outputFileDescriptor: handle.fileDescriptor,
             sampleRate: sampleRate,
             channels: channels,
@@ -102,7 +138,7 @@ public class AudioCaptureSession {
             }
         }
 
-        logger.info("Capture session started (PIDs \(self.pids), rate: \(self.sampleRate), channels: \(self.channels))")
+        logger.info("Capture session started (\(self.scopeLogLabel), rate: \(self.sampleRate), channels: \(self.channels))")
     }
 
     /// Instantaneous app-audio level in dBFS, decayed to -120 when no buffer has
