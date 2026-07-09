@@ -295,7 +295,7 @@ class MockRecorder: RecordingProvider {
     /// threads them through (appPID, noMic, micDeviceUID) instead of only checking
     /// `startCalled`. Defaults are deliberately "impossible" values so an unset or
     /// dropped argument fails an equality assertion rather than passing silently.
-    var capturedAppPID: pid_t = -1
+    var capturedAppPID: pid_t?
     var capturedNoMic = false
     var capturedMicDeviceUID: String?
 
@@ -305,7 +305,7 @@ class MockRecorder: RecordingProvider {
     var micLevelDBFS: Double = -120
     var appLevelDBFS: Double = -120
 
-    func start(appPID: pid_t, noMic: Bool, micDeviceUID: String?, debugLogging _: Bool) {
+    func start(appPID: pid_t?, noMic: Bool, micDeviceUID: String?, debugLogging _: Bool) {
         startCalled = true
         capturedAppPID = appPID
         capturedNoMic = noMic

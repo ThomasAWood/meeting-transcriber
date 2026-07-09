@@ -14,10 +14,10 @@ private final class CapturingRecorder: RecordingProvider {
     // doesn't exercise micDeviceUID threading (covered in WatchLoopTests).
     // Defaults are deliberately "impossible" so a dropped/inverted argument
     // fails an equality assertion instead of passing.
-    var capturedAppPID: pid_t = -1
+    var capturedAppPID: pid_t?
     var capturedNoMic = false
 
-    func start(appPID: pid_t, noMic: Bool, micDeviceUID _: String?, debugLogging _: Bool) {
+    func start(appPID: pid_t?, noMic: Bool, micDeviceUID _: String?, debugLogging _: Bool) {
         startCalled = true
         capturedAppPID = appPID
         capturedNoMic = noMic
