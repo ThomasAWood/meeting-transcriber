@@ -397,6 +397,24 @@ final class SettingsViewTests: XCTestCase { // swiftlint:disable:this type_body_
             let body = try makeOutput(settings: settings).inspect()
             XCTAssertNoThrow(try body.find(text: "Claude CLI"))
         }
+
+        func testCLIAgentProviderShowsCommandField() throws {
+            let settings = makeSettings()
+            settings.protocolProvider = .cliAgent
+            let body = try makeOutput(settings: settings).inspect()
+            XCTAssertNoThrow(try body.find(text: "Command"))
+            XCTAssertNoThrow(try body.find(
+                text: "Prompt + transcript are piped to the command's stdin. "
+                    + "Include the flag that makes your CLI read stdin (e.g. -).",
+            ))
+        }
+
+        func testCLIAgentProviderHidesEndpointField() throws {
+            let settings = makeSettings()
+            settings.protocolProvider = .cliAgent
+            let body = try makeOutput(settings: settings).inspect()
+            XCTAssertThrowsError(try body.find(text: "Endpoint"))
+        }
     #endif
 
     func testOpenAIProviderShowsEndpointField() throws {

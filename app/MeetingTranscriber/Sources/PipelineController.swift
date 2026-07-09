@@ -149,6 +149,11 @@ final class PipelineController {
         #if !APPSTORE
             case .claudeCLI:
                 ClaudeCLIProtocolGenerator(claudeBin: settings.claudeBin, language: settings.protocolLanguage)
+
+            case .cliAgent:
+                // Empty command → treat like `.none` (transcript only) rather
+                // than launching a misconfigured process.
+                cliAgentGenerator()
         #endif
 
         case .openAICompatible:
@@ -165,6 +170,16 @@ final class PipelineController {
             nil
         }
     }
+
+    #if !APPSTORE
+        /// Build the generic CLI-agent generator, or `nil` when the command is
+        /// blank (blank → transcript-only, same effect as `.none`).
+        private func cliAgentGenerator() -> (any ProtocolGenerating)? {
+            let command = settings.cliAgentCommand.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !command.isEmpty else { return nil }
+            return CLIAgentProtocolGenerator(command: command, language: settings.protocolLanguage)
+        }
+    #endif
 
     func configureCallbacks() {
         queue.onJobStateChange = { [notifier] job, _, newState in

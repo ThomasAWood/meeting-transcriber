@@ -187,6 +187,29 @@ final class AppSettingsTests: XCTestCase {
             let fresh = AppSettings(defaults: defaults)
             XCTAssertTrue(fresh.debugRPCEnabled)
         }
+
+        // MARK: - CLI Agent
+
+        func testCLIAgentCommandDefaultsToEmpty() {
+            // Empty default → makeProtocolGenerator returns nil (transcript-only)
+            // rather than launching a misconfigured command on first run.
+            XCTAssertEqual(settings.cliAgentCommand, "")
+        }
+
+        func testCLIAgentCommandPersistence() {
+            settings.cliAgentCommand = "opencode run -"
+            XCTAssertEqual(defaults.string(forKey: "cliAgentCommand"), "opencode run -")
+            // Verify a fresh instance reads it back from the same suite.
+            let fresh = AppSettings(defaults: defaults)
+            XCTAssertEqual(fresh.cliAgentCommand, "opencode run -")
+        }
+
+        func testProtocolProviderCLIAgentPersistence() {
+            settings.protocolProvider = .cliAgent
+            XCTAssertEqual(defaults.string(forKey: "protocolProvider"), "cliAgent")
+            let fresh = AppSettings(defaults: defaults)
+            XCTAssertEqual(fresh.protocolProvider, .cliAgent)
+        }
     #endif
 
     // MARK: - WhisperKit Model

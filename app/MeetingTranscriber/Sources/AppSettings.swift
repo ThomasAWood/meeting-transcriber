@@ -74,6 +74,7 @@ enum DiarizerMode: String, CaseIterable, Codable {
 enum ProtocolProvider: String, CaseIterable {
     #if !APPSTORE
         case claudeCLI
+        case cliAgent
     #endif
     case openAICompatible
     case none // swiftlint:disable:this discouraged_none_name
@@ -82,6 +83,8 @@ enum ProtocolProvider: String, CaseIterable {
         switch self {
         #if !APPSTORE
             case .claudeCLI: "Claude CLI"
+
+            case .cliAgent: "CLI Agent"
         #endif
 
         case .openAICompatible: "OpenAI-Compatible API"
@@ -339,6 +342,14 @@ final class AppSettings {
         var claudeBin: String {
             didSet { defaults.set(claudeBin, forKey: "claudeBin") }
         }
+
+        /// Full command template for the generic CLI-agent provider, e.g.
+        /// `"opencode run -"`. The prompt + transcript are piped to the
+        /// command's stdin, so it must include the flag that makes the CLI
+        /// read from stdin. Empty → transcript-only (no LLM step).
+        var cliAgentCommand: String {
+            didSet { defaults.set(cliAgentCommand, forKey: "cliAgentCommand") }
+        }
     #endif
 
     /// Default OpenAI-compatible endpoint — Ollama's base URL. Both the base
@@ -501,6 +512,7 @@ final class AppSettings {
         #else
             protocolProvider = storedProvider ?? .claudeCLI
             claudeBin = defaults.object(forKey: "claudeBin") as? String ?? "claude"
+            cliAgentCommand = defaults.string(forKey: "cliAgentCommand") ?? ""
         #endif
         protocolLanguage = defaults.string(forKey: "protocolLanguage") ?? "German"
 

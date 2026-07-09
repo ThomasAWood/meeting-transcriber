@@ -119,6 +119,9 @@ struct OutputSettingsView: View {
                 Text("Binary used for protocol generation")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+            case .cliAgent:
+                cliAgentConfigView
         #endif
 
         case .openAICompatible:
@@ -130,6 +133,23 @@ struct OutputSettingsView: View {
                 .foregroundStyle(.secondary)
         }
     }
+
+    #if !APPSTORE
+        @ViewBuilder
+        private var cliAgentConfigView: some View { // swiftlint:disable:this attributes
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Command")
+                TextField("opencode run -", text: $settings.cliAgentCommand)
+                    .textFieldStyle(.roundedBorder)
+                Text(
+                    "Prompt + transcript are piped to the command's stdin. "
+                        + "Include the flag that makes your CLI read stdin (e.g. -).",
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
+    #endif
 
     @ViewBuilder
     private var openAIConfigView: some View { // swiftlint:disable:this attributes
