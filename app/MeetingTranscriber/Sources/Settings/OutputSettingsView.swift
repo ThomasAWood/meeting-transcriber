@@ -174,7 +174,6 @@ struct OutputSettingsView: View {
                 Spacer()
                 TextField("", text: $settings.openAIModel)
                     .frame(width: 200)
-                    .multilineTextAlignment(.trailing)
             }
         }
 

@@ -59,7 +59,6 @@ struct SpeakersSettingsView: View {
                         Spacer()
                         TextField("Me", text: $settings.micName)
                             .frame(width: 160)
-                            .multilineTextAlignment(.trailing)
                     }
                     Text("Your name for dual-source mode. Leave empty to diarize mic track (multi-person room).")
                         .font(.caption)
