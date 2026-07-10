@@ -56,11 +56,13 @@ extension SpeakerNamingSession {
                 try FileManager.default.restrictToOwner(transcriptPath)
 
                 if let outputDir {
+                    let participants = ProtocolGenerator.extractParticipants(from: transcript)
                     await delegate.generateProtocol(
                         jobID: jobID,
                         transcript: transcript,
                         title: job.meetingTitle,
-                        protocolsDir: outputDir.appendingPathComponent("protocols"),
+                        summariesDir: outputDir.appendingPathComponent("summaries"),
+                        participants: participants,
                     )
                 }
             } catch {

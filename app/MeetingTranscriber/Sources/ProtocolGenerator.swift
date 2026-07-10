@@ -6,6 +6,7 @@ private let logger = Logger(subsystem: AppPaths.logSubsystem, category: "Protoco
 /// Abstraction for protocol generation, enabling mock injection in tests.
 protocol ProtocolGenerating {
     func generate(transcript: String, title: String, diarized: Bool) async throws -> String
+    func generate(transcript: String, title: String, diarized: Bool, participants: [String]?) async throws -> String
 }
 
 /// Shared protocol utilities: prompts, file operations, and error types.
@@ -78,10 +79,9 @@ enum ProtocolGenerator {
         prompt.replacingOccurrences(of: "{LANGUAGE}", with: language)
     }
 
-    /// Load the protocol generation prompt. Reads from `url` (default
-    /// `AppPaths.customPromptFile`) when present and non-empty; falls back
-    /// to the built-in `protocolPrompt`. The `url` parameter exists so tests
-    /// can use unique per-test paths instead of racing on the shared one.
+    /// Load the protocol generation prompt. Reads from `url` when present and non-empty;
+    /// falls back to the built-in `protocolPrompt`. The `url` parameter exists so
+    /// tests can use unique per-test paths instead of racing on the shared one.
     static func loadPrompt(from url: URL = AppPaths.customPromptFile) -> String {
         if let custom = try? String(contentsOf: url, encoding: .utf8),
            !custom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -95,7 +95,21 @@ enum ProtocolGenerator {
     /// + optional `diarizationNote`. Excludes the transcript itself —
     /// callers append or attach it as they see fit.
     static func buildSystemPrompt(diarized: Bool, language: String) -> String {
+        buildSystemPrompt(diarized: diarized, language: language, participants: nil)
+    }
+
+    /// Build the localized system prompt with optional speaker list substitution.
+    /// - Parameters:
+    ///   - diarized: Whether diarization labels are present (adds the diarization note)
+    ///   - language: Target language for `{LANGUAGE}` substitution
+    ///   - participants: Optional list of participant names for `{SPEAKERS}` substitution
+    /// - Returns: The fully substituted system prompt
+    static func buildSystemPrompt(diarized: Bool, language: String, participants: [String]?) -> String {
         var prompt = applyLanguage(loadPrompt(), language: language)
+        if let participants, !participants.isEmpty {
+            let speakersList = participants.map { "- \($0)" }.joined(separator: "\n")
+            prompt = prompt.replacingOccurrences(of: "{SPEAKERS}", with: speakersList)
+        }
         if diarized { prompt += diarizationNote }
         return prompt
     }
@@ -198,6 +212,33 @@ enum ProtocolGenerator {
         let slug = sanitizeSlug(title)
         let base = slug.isEmpty ? date : "\(date)-\(slug)"
         return "\(base).\(ext)"
+    }
+
+    /// Extract unique participant names from a diarized transcript.
+    /// Returns a sorted list of names, filtering out generic labels like
+    /// [Remote], [Me], and [SPEAKER_XX]. Returns nil if no meaningful
+    /// names are found (e.g., transcript is not diarized).
+    static func extractParticipants(from transcript: String) -> [String]? {
+        let pattern = #"\[([\w\s]+)\]"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+            return nil
+        }
+
+        let genericLabels = Set(["Remote", "Me", "Unknown"])
+        var participants = Set<String>()
+        let fullRange = NSRange(transcript.startIndex..., in: transcript)
+
+        regex.enumerateMatches(in: transcript, options: [], range: fullRange) { match, _, _ in
+            guard let match,
+                  let range = Range(match.range(at: 1), in: transcript) else { return }
+            let name = String(transcript[range]).trimmingCharacters(in: .whitespaces)
+            // Filter out generic labels and numeric auto-speaker IDs
+            guard !genericLabels.contains(name),
+                  !name.hasPrefix("SPEAKER_") else { return }
+            participants.insert(name)
+        }
+
+        return participants.isEmpty ? nil : participants.sorted()
     }
 }
 

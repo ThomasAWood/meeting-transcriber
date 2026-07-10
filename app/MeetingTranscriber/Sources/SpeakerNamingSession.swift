@@ -28,7 +28,7 @@ protocol SpeakerNamingSessionDelegate: AnyObject {
         embeddings: [String: [Float]], speakingTimes: [String: TimeInterval],
     )
     /// Run the LLM protocol generator over a transcript (a queue pipeline stage).
-    func generateProtocol(jobID: UUID, transcript: String, title: String, protocolsDir: URL) async
+    func generateProtocol(jobID: UUID, transcript: String, title: String, summariesDir: URL, participants: [String]?) async
     /// Diarize app + mic tracks separately with the shared single-track fallback
     /// (app-only on mic failure, mic-only on app failure; a queue pipeline stage,
     /// reused by the late re-run).
@@ -226,11 +226,13 @@ final class SpeakerNamingSession {
               let outputDir,
               let transcript = try? String(contentsOf: transcriptPath, encoding: .utf8)
         else { return }
+        let participants = ProtocolGenerator.extractParticipants(from: transcript)
         await delegate.generateProtocol(
             jobID: jobID,
             transcript: transcript,
             title: job.meetingTitle,
-            protocolsDir: outputDir.appendingPathComponent("protocols"),
+            summariesDir: outputDir.appendingPathComponent("summaries"),
+            participants: participants,
         )
         if delegate.job(withID: jobID)?.state == .generatingProtocol {
             delegate.updateJobState(id: jobID, to: .done)

@@ -297,10 +297,37 @@ high-immediate-value, so it goes **first** among the remaining phases.
      `PipelineController.makeProtocolGenerator()`; command field + stdin-contract
      caption in `OutputSettingsView`. Quote-aware tokeniser; binary resolved
      against bundle search paths → `/usr/bin/env` fallback.
-3. **G — Output routing & summary customization.** ← NEXT. Self-contained,
-   high personal value, no dependency on the detection work. Three output
-   folders + `.md` transcripts + arbitrary-path custom prompt + `{SPEAKERS}`
-   prompt placeholder + split summary/transcript files.
+3. **G — Output routing & summary customization.** ← IN PROGRESS (2026-07-10)
+   **G1 — Three independently-configurable output folders.** ✅ DONE (backend)
+   - `AppSettings`: Added `transcriptsDirBookmark`, `summariesDirBookmark`,
+     `recordingsDirBookmark`, and `customPromptFileBookmark`. Added effective
+     accessors (`effectiveTranscriptsDir`, `effectiveSummariesDir`,
+     `effectiveRecordingsDir`, `effectiveCustomPromptFile`). Legacy
+     `effectiveOutputDir` returns `effectiveTranscriptsDir` for compatibility.
+   - `PipelineQueue`: Updated to accept three separate directories in init.
+   - `PipelineQueue+Stages`: Updated `generateAndSaveProtocol` to accept
+     transcripts/summaries/recordings directories separately. `generateProtocol`
+     now writes summaries to `summariesDir` instead of appending transcript.
+   - `PipelineController`: Wired three separate directories from settings.
+   - UI: **TODO** (G1) — implement three folder pickers in `OutputSettingsView`.
+
+   **G2 — Transcripts as `.md`.** ✅ DONE — `ProtocolGenerator.saveTranscript`
+   already uses `.md` extension.
+
+   **G3 — Custom prompt from any file (live, arbitrary path).** ✅ DONE (backend)
+   - `AppSettings`: Added `customPromptFileBookmark` and `effectiveCustomPromptFile`.
+   - `ProtocolGenerator.loadPrompt`: Already supports `from: URL` parameter.
+   - UI: Uses `settings.effectiveCustomPromptFile` for prompt file path.
+
+   **G4 — Speaker data passed to the prompt + split summary/transcript files.** ✅ DONE
+   - `ProtocolGenerator`: Added `extractParticipants(from:)` helper to extract
+     unique speaker names from diarized transcripts. Added `buildSystemPrompt`
+     overload accepting `participants: [String]?` with `{SPEAKERS}` substitution.
+   - Protocol generators: All implementations now support the new `participants`
+     parameter via the protocol conformance overload.
+   - `PipelineQueue+Stages`: `generateProtocol` now extracts participants and
+     passes them to the generator. Summaries are saved separately without
+     appending the transcript.
 4. **B — EventKit calendar detector + per-calendar allowlist UI.** ✅ DONE (2026-07-10)
    - CalendarDetector.swift (MeetingDetecting conformer) with EventKit provider,
      permission helper, and pure logic (CalendarEventInfo, CalendarDetectorLogic).

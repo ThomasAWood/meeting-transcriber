@@ -105,7 +105,10 @@ extension PipelineQueue {
 
             try await generateAndSaveProtocol(
                 finalTranscript: finalTranscript, transcription: transcription,
-                ctx: ctx, workDir: workDir, outputDir: outputDir,
+                ctx: ctx, workDir: workDir,
+                transcriptsDir: transcriptsDir,
+                summariesDir: summariesDir,
+                recordingsDir: recordingsDir,
             )
         } catch is CancellationError {
             stopElapsedTimer()
@@ -472,11 +475,10 @@ extension PipelineQueue {
     /// terminal state.
     private func generateAndSaveProtocol(
         finalTranscript: String, transcription: TranscriptionOutput,
-        ctx: JobContext, workDir: URL, outputDir: URL,
+        ctx: JobContext, workDir: URL, transcriptsDir: URL, summariesDir: URL, recordingsDir: URL,
     ) async throws {
         // --- Save Transcript & Audio (always) ---
-        let protocolsDir = outputDir.appendingPathComponent("protocols")
-        let txtPath = try ProtocolGenerator.saveTranscript(finalTranscript, title: ctx.title, dir: protocolsDir)
+        let txtPath = try ProtocolGenerator.saveTranscript(finalTranscript, title: ctx.title, dir: transcriptsDir)
         logger.info("[\(ctx.shortID, privacy: .public)] transcript_saved file=\(txtPath.lastPathComponent, privacy: .private)")
 
         if let idx = jobs.firstIndex(where: { $0.id == ctx.jobID }) {
@@ -484,7 +486,6 @@ extension PipelineQueue {
             jobs[idx].namingSlug = ctx.slug
         }
 
-        let recordingsDir = outputDir.appendingPathComponent("recordings")
         Self.copyAudioToOutput(
             mixPath: ctx.mixPath, appPath: ctx.appPath, micPath: ctx.micPath,
             title: ctx.title, outputDir: recordingsDir,
@@ -519,9 +520,11 @@ extension PipelineQueue {
         // the current auto-names). Saves an LLM call we'd otherwise
         // have to redo.
         if naming.speakerNamingDataByJob[ctx.jobID] == nil {
+            // Extract participants from the transcript for the prompt
+            let participants = ProtocolGenerator.extractParticipants(from: finalTranscript)
             await generateProtocol(
                 jobID: ctx.jobID, transcript: finalTranscript, title: ctx.title,
-                protocolsDir: protocolsDir,
+                summariesDir: summariesDir, participants: participants,
             )
         }
 
@@ -554,7 +557,7 @@ extension PipelineQueue {
     /// reapplySpeakerNames / skipped / stale paths. Internal (not private)
     /// because it is a `SpeakerNamingSessionDelegate` witness.
     func generateProtocol(
-        jobID: UUID, transcript: String, title: String, protocolsDir: URL,
+        jobID: UUID, transcript: String, title: String, summariesDir: URL, participants: [String]?,
     ) async {
         guard let protocolGeneratorFactory, let generator = protocolGeneratorFactory() else {
             return
@@ -567,13 +570,12 @@ extension PipelineQueue {
                 of: #"\[\w[\w\s]*\]"#, options: .regularExpression,
             ) != nil
             let protocolMD = try await generator.generate(
-                transcript: transcript, title: title, diarized: diarized,
+                transcript: transcript, title: title, diarized: diarized, participants: participants,
             )
-            let fullMD = protocolMD + "\n\n---\n\n## Full Transcript\n\n" + transcript
             let mdPath = try ProtocolGenerator.saveProtocol(
-                fullMD, title: title, dir: protocolsDir,
+                protocolMD, title: title, dir: summariesDir,
             )
-            logger.info("[\(shortID, privacy: .public)] protocol_saved file=\(mdPath.lastPathComponent, privacy: .private)")
+            logger.info("[\(shortID, privacy: .public)] summary_saved file=\(mdPath.lastPathComponent, privacy: .private)")
             if let idx = jobs.firstIndex(where: { $0.id == jobID }) {
                 jobs[idx].protocolPath = mdPath
             }

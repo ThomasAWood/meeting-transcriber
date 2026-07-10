@@ -49,7 +49,10 @@ class PipelineQueue {
     /// (current global setting). Production wires both via `AppState`.
     let diarizationFactoryWithMode: ((DiarizerMode) -> any DiarizationProvider)?
     let protocolGeneratorFactory: (() -> (any ProtocolGenerating)?)?
-    let outputDir: URL?
+    let outputDir: URL? // Legacy, deprecated - for backward compatibility only
+    let transcriptsDir: URL
+    let summariesDir: URL
+    let recordingsDir: URL
     let diarizeEnabled: Bool
     let numSpeakers: Int
     let micLabel: String
@@ -210,6 +213,10 @@ class PipelineQueue {
         self.diarizationFactoryWithMode = nil
         self.protocolGeneratorFactory = nil
         self.outputDir = nil
+        let defaultDir = AppPaths.downloadsProtocolsDir
+        self.transcriptsDir = defaultDir
+        self.summariesDir = defaultDir
+        self.recordingsDir = AppPaths.recordingsDir
         self.diarizeEnabled = false
         self.numSpeakers = 0
         self.micLabel = "Me"
@@ -292,6 +299,9 @@ class PipelineQueue {
         stageTimingLog: StageTimingLog? = nil,
         completedJobLifetime: TimeInterval = 60,
         terminalJobStore: TerminalJobStore? = nil,
+        transcriptsDir: URL? = nil,
+        summariesDir: URL? = nil,
+        recordingsDir: URL? = nil,
     ) {
         self.logDir = logDir ?? AppPaths.ipcDir
         self.processedLedger = ProcessedRecordingsLedger(logDir: self.logDir)
@@ -301,6 +311,9 @@ class PipelineQueue {
         self.diarizationFactoryWithMode = diarizationFactoryWithMode
         self.protocolGeneratorFactory = protocolGeneratorFactory
         self.outputDir = outputDir
+        self.transcriptsDir = transcriptsDir ?? outputDir
+        self.summariesDir = summariesDir ?? outputDir
+        self.recordingsDir = recordingsDir ?? outputDir.appendingPathComponent("recordings")
         self.diarizeEnabled = diarizeEnabled
         self.numSpeakers = numSpeakers
         // "Remote" is the reserved routing tag for the app/remote track

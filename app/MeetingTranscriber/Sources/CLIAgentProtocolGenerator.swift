@@ -37,7 +37,11 @@
         // MARK: - ProtocolGenerating
 
         func generate(transcript: String, title _: String, diarized: Bool) async throws -> String {
-            let prompt = ProtocolGenerator.buildSystemPrompt(diarized: diarized, language: language) + transcript
+            try await generate(transcript: transcript, title: "", diarized: diarized, participants: nil)
+        }
+
+        func generate(transcript: String, title _: String, diarized: Bool, participants: [String]?) async throws -> String {
+            let prompt = ProtocolGenerator.buildSystemPrompt(diarized: diarized, language: language, participants: participants) + transcript
 
             let tokens = Self.tokenize(command)
             guard let bin = tokens.first else {

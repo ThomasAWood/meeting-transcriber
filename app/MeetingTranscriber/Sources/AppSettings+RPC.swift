@@ -90,8 +90,8 @@
         private func rpcOutputSettings() -> RPCStateSnapshot.Settings.Output {
             RPCStateSnapshot.Settings.Output(
                 directory: rpcOutputDirPath(),
-                hasCustomDirectory: customOutputDirBookmark != nil,
-                hasCustomPrompt: FileManager.default.fileExists(atPath: AppPaths.customPromptFile.path),
+                hasCustomDirectory: transcriptsDirBookmark != nil || summariesDirBookmark != nil || recordingsDirBookmark != nil,
+                hasCustomPrompt: FileManager.default.fileExists(atPath: effectiveCustomPromptFile.path),
             )
         }
 
@@ -106,8 +106,9 @@
         /// ignore staleness, and report nil when the custom dir is currently
         /// unresolvable.
         private func rpcOutputDirPath() -> String? {
-            guard let data = customOutputDirBookmark else {
-                return AppPaths.downloadsProtocolsDir.path
+            // Prioritize transcriptsDirBookmark for backward compatibility
+            guard let data = transcriptsDirBookmark ?? summariesDirBookmark ?? recordingsDirBookmark else {
+                return AppPaths.protocolsDir.path
             }
             var isStale = false
             guard let url = try? URL(

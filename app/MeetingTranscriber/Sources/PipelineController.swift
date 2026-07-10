@@ -95,6 +95,9 @@ final class PipelineController {
             recognitionStatsLog: RecognitionStatsLog(),
             stageTimingLog: StageTimingLog(),
             terminalJobStore: terminalJobStore,
+            transcriptsDir: settings.effectiveTranscriptsDir,
+            summariesDir: settings.effectiveSummariesDir,
+            recordingsDir: settings.effectiveRecordingsDir,
         )
         q.loadSnapshot()
         // Fire-and-forget: dir scan + per-file attr probes run off-main so app

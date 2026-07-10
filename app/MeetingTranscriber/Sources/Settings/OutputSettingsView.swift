@@ -50,32 +50,31 @@ struct OutputSettingsView: View {
     var body: some View {
         // swiftlint:disable:next closure_body_length
         Form {
-            // Output folder applies to record-only AND protocol mode, so this
-            // section deliberately sits outside the .recordOnlyDisabled block.
-            Section("Output Folder") {
-                HStack {
-                    Text("Output Folder")
-                    Spacer()
-                    Text(outputDirDisplay)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-
-                HStack {
-                    Button("Choose\u{2026}") {
-                        chooseOutputFolder()
-                    }
-
-                    Button("Reset") {
-                        settings.clearCustomOutputDir()
-                    }
-                    .disabled(settings.customOutputDirBookmark == nil)
-
-                    Spacer()
-                }
-            }
-            .accessibilityIdentifier("outputFolderSection")
+            // TODO: Update UI to support three separate folder pickers (G1)
+            // Section("Output Folder") {
+            //     HStack {
+            //         Text("Output Folder")
+            //         Spacer()
+            //         Text(outputDirDisplay)
+            //             .foregroundStyle(.secondary)
+            //             .lineLimit(1)
+            //             .truncationMode(.middle)
+            //     }
+            //
+            //     HStack {
+            //         Button("Choose\u{2026}") {
+            //             chooseOutputFolder()
+            //         }
+            //
+            //         Button("Reset") {
+            //             settings.clearCustomOutputDir()
+            //         }
+            //         .disabled(settings.customOutputDirBookmark == nil)
+            //
+            //         Spacer()
+            //     }
+            // }
+            // .accessibilityIdentifier("outputFolderSection")
 
             Section("Protocol Generation") {
                 Picker("LLM Provider", selection: $settings.protocolProvider) {
@@ -245,7 +244,7 @@ struct OutputSettingsView: View {
                 titleVisibility: .visible,
             ) {
                 Button("Reset", role: .destructive) {
-                    try? FileManager.default.removeItem(at: AppPaths.customPromptFile)
+                    try? FileManager.default.removeItem(at: settings.effectiveCustomPromptFile)
                     refreshCustomPromptState()
                 }
             }
@@ -267,7 +266,7 @@ struct OutputSettingsView: View {
     // MARK: - Helpers
 
     private func refreshCustomPromptState() {
-        hasCustomPrompt = FileManager.default.fileExists(atPath: AppPaths.customPromptFile.path)
+        hasCustomPrompt = FileManager.default.fileExists(atPath: settings.effectiveCustomPromptFile.path)
     }
 
     func testConnection() {
@@ -307,13 +306,13 @@ struct OutputSettingsView: View {
 
     private func ensurePromptDirectory() {
         try? FileManager.default.createDirectory(
-            at: AppPaths.customPromptFile.deletingLastPathComponent(),
+            at: settings.effectiveCustomPromptFile.deletingLastPathComponent(),
             withIntermediateDirectories: true,
         )
     }
 
     private func openCustomPrompt() {
-        let url = AppPaths.customPromptFile
+        let url = settings.effectiveCustomPromptFile
         if !FileManager.default.fileExists(atPath: url.path) {
             ensurePromptDirectory()
             try? ProtocolGenerator.protocolPrompt.write(to: url, atomically: true, encoding: .utf8)
@@ -329,7 +328,7 @@ struct OutputSettingsView: View {
         panel.message = "Select a prompt file to import"
         guard panel.runModal() == .OK, let source = panel.url else { return }
         ensurePromptDirectory()
-        let dest = AppPaths.customPromptFile
+        let dest = settings.effectiveCustomPromptFile
         if FileManager.default.fileExists(atPath: dest.path) {
             _ = try? FileManager.default.replaceItemAt(dest, withItemAt: source)
         } else {
@@ -337,21 +336,22 @@ struct OutputSettingsView: View {
         }
     }
 
-    private var outputDirDisplay: String {
-        OutputSettingsLogic.displayPath(
-            for: settings.effectiveOutputDir,
-            home: FileManager.default.homeDirectoryForCurrentUser,
-        )
-    }
-
-    private func chooseOutputFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.message = "Choose a folder for protocol output"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        settings.setCustomOutputDir(url)
-    }
+    // TODO: Update after implementing three separate folder pickers
+    // private var outputDirDisplay: String {
+    //     OutputSettingsLogic.displayPath(
+    //         for: settings.effectiveOutputDir,
+    //         home: FileManager.default.homeDirectoryForCurrentUser,
+    //     )
+    // }
+    //
+    // private func chooseOutputFolder() {
+    //     let panel = NSOpenPanel()
+    //     panel.canChooseDirectories = true
+    //     panel.canChooseFiles = false
+    //     panel.canCreateDirectories = true
+    //     panel.allowsMultipleSelection = false
+    //     panel.message = "Choose a folder for protocol output"
+    //     guard panel.runModal() == .OK, let url = panel.url else { return }
+    //     settings.setCustomOutputDir(url)
+    // }
 }

@@ -392,17 +392,55 @@ final class AppSettings {
         }
     }
 
-    // MARK: - Output Directory
+    // MARK: - Output Directories
 
-    /// Security-scoped bookmark for a user-chosen output directory.
-    var customOutputDirBookmark: Data? {
-        get { defaults.data(forKey: "customOutputDirBookmark") }
-        set { defaults.set(newValue, forKey: "customOutputDirBookmark") }
+    /// Security-scoped bookmark for the transcripts directory.
+    var transcriptsDirBookmark: Data? {
+        get { defaults.data(forKey: "transcriptsDirBookmark") }
+        set { defaults.set(newValue, forKey: "transcriptsDirBookmark") }
     }
 
-    /// Resolved URL from the security-scoped bookmark. Calls `startAccessingSecurityScopedResource()`.
-    var customOutputDir: URL? {
-        guard let data = customOutputDirBookmark else { return nil }
+    /// Security-scoped bookmark for the summaries directory.
+    var summariesDirBookmark: Data? {
+        get { defaults.data(forKey: "summariesDirBookmark") }
+        set { defaults.set(newValue, forKey: "summariesDirBookmark") }
+    }
+
+    /// Security-scoped bookmark for the recordings directory.
+    var recordingsDirBookmark: Data? {
+        get { defaults.data(forKey: "recordingsDirBookmark") }
+        set { defaults.set(newValue, forKey: "recordingsDirBookmark") }
+    }
+
+    /// Security-scoped bookmark for a user-chosen custom prompt file.
+    var customPromptFileBookmark: Data? {
+        get { defaults.data(forKey: "customPromptFileBookmark") }
+        set { defaults.set(newValue, forKey: "customPromptFileBookmark") }
+    }
+
+    /// Resolved transcripts directory URL from the security-scoped bookmark.
+    var customTranscriptsDir: URL? {
+        resolveBookmark(transcriptsDirBookmark)
+    }
+
+    /// Resolved summaries directory URL from the security-scoped bookmark.
+    var customSummariesDir: URL? {
+        resolveBookmark(summariesDirBookmark)
+    }
+
+    /// Resolved recordings directory URL from the security-scoped bookmark.
+    var customRecordingsDir: URL? {
+        resolveBookmark(recordingsDirBookmark)
+    }
+
+    /// Resolved custom prompt file URL from the security-scoped bookmark.
+    var customPromptFileURL: URL? {
+        resolveBookmark(customPromptFileBookmark)
+    }
+
+    /// Helper to resolve a security-scoped bookmark, handling staleness.
+    private func resolveBookmark(_ data: Data?) -> URL? {
+        guard let data else { return nil }
         var isStale = false
         guard let url = try? URL(
             resolvingBookmarkData: data,
@@ -417,7 +455,16 @@ final class AppSettings {
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil,
             ) {
-                customOutputDirBookmark = newData
+                // Update the appropriate bookmark based on which one we're resolving
+                if data == transcriptsDirBookmark {
+                    transcriptsDirBookmark = newData
+                } else if data == summariesDirBookmark {
+                    summariesDirBookmark = newData
+                } else if data == recordingsDirBookmark {
+                    recordingsDirBookmark = newData
+                } else if data == customPromptFileBookmark {
+                    customPromptFileBookmark = newData
+                }
             }
         }
         return url
@@ -425,22 +472,102 @@ final class AppSettings {
 
     /// Store a user-selected directory as a security-scoped bookmark.
     func setCustomOutputDir(_ url: URL) {
+        // Legacy method - kept for compatibility, now sets all three
+        setTranscriptsDir(url)
+        setSummariesDir(url)
+        setRecordingsDir(url)
+    }
+
+    /// Store the user-selected transcripts directory.
+    func setTranscriptsDir(_ url: URL) {
         guard let data = try? url.bookmarkData(
             options: .withSecurityScope,
             includingResourceValuesForKeys: nil,
             relativeTo: nil,
         ) else { return }
-        customOutputDirBookmark = data
+        transcriptsDirBookmark = data
     }
 
-    /// Clear the custom output directory, reverting to the default.
+    /// Store the user-selected summaries directory.
+    func setSummariesDir(_ url: URL) {
+        guard let data = try? url.bookmarkData(
+            options: .withSecurityScope,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil,
+        ) else { return }
+        summariesDirBookmark = data
+    }
+
+    /// Store the user-selected recordings directory.
+    func setRecordingsDir(_ url: URL) {
+        guard let data = try? url.bookmarkData(
+            options: .withSecurityScope,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil,
+        ) else { return }
+        recordingsDirBookmark = data
+    }
+
+    /// Store the user-selected custom prompt file.
+    func setCustomPromptFile(_ url: URL) {
+        guard let data = try? url.bookmarkData(
+            options: .withSecurityScope,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil,
+        ) else { return }
+        customPromptFileBookmark = data
+    }
+
+    /// Clear the custom output directories, reverting to defaults.
     func clearCustomOutputDir() {
-        customOutputDirBookmark = nil
+        transcriptsDirBookmark = nil
+        summariesDirBookmark = nil
+        recordingsDirBookmark = nil
     }
 
-    /// The effective output directory: custom choice or ~/Downloads/MeetingTranscriber/.
+    /// Clear the custom transcripts directory.
+    func clearTranscriptsDir() {
+        transcriptsDirBookmark = nil
+    }
+
+    /// Clear the custom summaries directory.
+    func clearSummariesDir() {
+        summariesDirBookmark = nil
+    }
+
+    /// Clear the custom recordings directory.
+    func clearRecordingsDir() {
+        recordingsDirBookmark = nil
+    }
+
+    /// Clear the custom prompt file.
+    func clearCustomPromptFile() {
+        customPromptFileBookmark = nil
+    }
+
+    /// The effective transcripts directory: custom choice or default.
+    var effectiveTranscriptsDir: URL {
+        customTranscriptsDir ?? AppPaths.protocolsDir
+    }
+
+    /// The effective summaries directory: custom choice or default.
+    var effectiveSummariesDir: URL {
+        customSummariesDir ?? AppPaths.protocolsDir
+    }
+
+    /// The effective recordings directory: custom choice or default.
+    var effectiveRecordingsDir: URL {
+        customRecordingsDir ?? AppPaths.recordingsDir
+    }
+
+    /// The effective custom prompt file: custom choice or default location.
+    var effectiveCustomPromptFile: URL {
+        customPromptFileURL ?? AppPaths.customPromptFile
+    }
+
+    /// Legacy property - returns effectiveTranscriptsDir for backwards compatibility.
     var effectiveOutputDir: URL {
-        customOutputDir ?? AppPaths.downloadsProtocolsDir
+        effectiveTranscriptsDir
     }
 
     // MARK: - Diagnostics
