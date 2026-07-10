@@ -102,14 +102,14 @@ enum ProtocolGenerator {
 
     // MARK: - File Operations
 
-    /// Save a transcript to a text file.
+    /// Save a transcript to a Markdown file.
     ///
     /// - Returns: URL of the saved file
     static func saveTranscript(_ text: String, title: String, dir: URL) throws -> URL {
         let accessing = dir.startAccessingSecurityScopedResource()
         defer { if accessing { dir.stopAccessingSecurityScopedResource() } }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let url = dir.appendingPathComponent(filename(title: title, ext: "txt"))
+        let url = dir.appendingPathComponent(filename(title: title, ext: "md"))
         try text.write(to: url, atomically: true, encoding: .utf8)
         // Transcripts contain verbatim meeting speech — restrict to owner-only.
         try FileManager.default.restrictToOwner(url)

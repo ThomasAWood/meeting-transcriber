@@ -217,7 +217,7 @@ final class ProtocolGeneratorTests: XCTestCase {
         let url = try ProtocolGenerator.saveTranscript(text, title: "Test", dir: tmpDir)
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
-        XCTAssertTrue(url.lastPathComponent.hasSuffix("-test.txt"))
+        XCTAssertTrue(url.lastPathComponent.hasSuffix("-test.md"))
 
         let loaded = try String(contentsOf: url, encoding: .utf8)
         XCTAssertEqual(loaded, text)
