@@ -301,14 +301,22 @@ high-immediate-value, so it goes **first** among the remaining phases.
    high personal value, no dependency on the detection work. Three output
    folders + `.md` transcripts + arbitrary-path custom prompt + `{SPEAKERS}`
    prompt placeholder + split summary/transcript files.
-4. **B — EventKit calendar detector + per-calendar allowlist UI.** The main
-   project. Depends on A for clean PID-free recording.
-5. **E — Slack/Teams/etc. via PowerAssertionDetector.** Already the default
-   detector; keep it as the fallback trigger for unscheduled huddles. (D
-   window-title detection is rejected — see F.)
-6. **F — Remove Screen Recording permission.** Self-contained cleanup. Land
-   after B (so the calendar trigger covers the assertion-less gap first), or
-   independently at any time since PowerAssertion is already wired.
+4. **B — EventKit calendar detector + per-calendar allowlist UI.** ✅ DONE (2026-07-10)
+   - CalendarDetector.swift (MeetingDetecting conformer) with EventKit provider,
+     permission helper, and pure logic (CalendarEventInfo, CalendarDetectorLogic).
+     System-wide capture (windowPID=0) routed to `appPID:nil` in WatchLoop.
+     CalendarDetectionSection.swift UI (General → Calendar) with allowlist toggles
+     (empty set = all calendars), permission grant flow, and authorization status.
+   - CompositeMeetingDetector.swift layers calendar over PowerAssertionDetector.
+   - AppSettings additions (`calendarDetectionEnabled`, `enabledCalendarIDs`).
+   - AppStore.entitlements calendar permission, Info.plist usage description.
+5. **E — Slack/Teams/etc. via PowerAssertionDetector.** ✅ Already wired
+   as the fallback (remains secondary to calendar when B enabled). D
+   window-title detection is rejected — see F.
+6. **F — Remove Screen Recording permission.** (No longer needed: calendar +
+   power-assertion detection together cover the use case without SR. Phase F
+   remains in plan but deprioritized — the permission surface can be removed
+   in a future cleanup pass after E/F features stabilize.)
 
 ## Trade-offs & Risks
 

@@ -120,6 +120,22 @@ final class AppSettings {
         didSet { defaults.set(autoWatch, forKey: "autoWatch") }
     }
 
+    // MARK: - Calendar Detection
+
+    /// When true, the watch loop uses a calendar-driven detector (system-wide
+    /// capture) alongside the power-assertion fallback. Off by default.
+    var calendarDetectionEnabled: Bool {
+        didSet { defaults.set(calendarDetectionEnabled, forKey: "calendarDetectionEnabled") }
+    }
+
+    /// Allowlist of calendar identifiers that may trigger a recording. Empty =
+    /// all calendars enabled (least-surprising first run). Stored as an array
+    /// (UserDefaults has no native `Set`).
+    var enabledCalendarIDs: Set<String> {
+        get { Set(defaults.stringArray(forKey: "enabledCalendarIDs") ?? []) }
+        set { defaults.set(Array(newValue), forKey: "enabledCalendarIDs") }
+    }
+
     // MARK: - Recording
 
     var pollInterval: Double {
@@ -476,6 +492,7 @@ final class AppSettings {
         watchZoom = defaults.object(forKey: "watchZoom") as? Bool ?? true
         watchWebex = defaults.object(forKey: "watchWebex") as? Bool ?? true
         autoWatch = defaults.object(forKey: "autoWatch") as? Bool ?? false
+        calendarDetectionEnabled = defaults.object(forKey: "calendarDetectionEnabled") as? Bool ?? false
 
         pollInterval = defaults.object(forKey: "pollInterval") as? Double ?? 3.0
         endGrace = defaults.object(forKey: "endGrace") as? Double ?? 15.0

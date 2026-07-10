@@ -164,6 +164,33 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.watchApps, [])
     }
 
+    // MARK: - Calendar Detection
+
+    func testCalendarDetectionDefaultsOff() {
+        XCTAssertFalse(settings.calendarDetectionEnabled)
+    }
+
+    func testCalendarDetectionEnabledPersists() {
+        settings.calendarDetectionEnabled = true
+        XCTAssertTrue(defaults.bool(forKey: "calendarDetectionEnabled"))
+        // Re-load from the same suite to confirm round-trip.
+        XCTAssertTrue(AppSettings(defaults: defaults).calendarDetectionEnabled)
+    }
+
+    func testEnabledCalendarIDsDefaultEmpty() {
+        XCTAssertEqual(settings.enabledCalendarIDs, [])
+    }
+
+    func testEnabledCalendarIDsRoundTrip() {
+        settings.enabledCalendarIDs = ["A", "B"]
+        XCTAssertEqual(settings.enabledCalendarIDs, ["A", "B"])
+        XCTAssertEqual(
+            defaults.stringArray(forKey: "enabledCalendarIDs")?.sorted(),
+            ["A", "B"],
+        )
+        XCTAssertEqual(AppSettings(defaults: defaults).enabledCalendarIDs, ["A", "B"])
+    }
+
     // MARK: - Claude CLI
 
     #if !APPSTORE
