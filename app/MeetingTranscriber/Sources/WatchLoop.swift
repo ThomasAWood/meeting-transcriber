@@ -581,6 +581,14 @@ struct RecordOnlyDestination: Equatable {
         )
     }
 
+    /// Production path with an independently-configurable recordings directory:
+    /// `dir` is the resolved recordings URL (possibly from a security-scoped
+    /// bookmark). Both scope and writeDir point at it directly — no `/recordings`
+    /// subfolder appended.
+    static func recordingsDir(_ dir: URL) -> Self {
+        Self(scope: dir, writeDir: dir)
+    }
+
     /// Test/default path: no security scope to manage — `scope == writeDir`,
     /// so start-access is a harmless no-op and the writer hits `url` directly.
     static func unscoped(_ url: URL) -> Self {

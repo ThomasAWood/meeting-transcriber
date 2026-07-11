@@ -311,8 +311,9 @@ class PipelineQueue {
         self.diarizationFactoryWithMode = diarizationFactoryWithMode
         self.protocolGeneratorFactory = protocolGeneratorFactory
         self.outputDir = outputDir
-        self.transcriptsDir = transcriptsDir ?? outputDir
-        self.summariesDir = summariesDir ?? outputDir
+        let defaultProtocols = outputDir.appendingPathComponent("protocols")
+        self.transcriptsDir = transcriptsDir ?? defaultProtocols
+        self.summariesDir = summariesDir ?? defaultProtocols
         self.recordingsDir = recordingsDir ?? outputDir.appendingPathComponent("recordings")
         self.diarizeEnabled = diarizeEnabled
         self.numSpeakers = numSpeakers

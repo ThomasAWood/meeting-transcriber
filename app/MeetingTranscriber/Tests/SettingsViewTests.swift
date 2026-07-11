@@ -454,15 +454,24 @@ final class SettingsViewTests: XCTestCase { // swiftlint:disable:this type_body_
 
     func testOutputFolderSectionExists() throws {
         let body = try makeOutput().inspect()
-        XCTAssertNoThrow(try body.find(text: "Output Folder"))
+        XCTAssertNoThrow(try body.find(text: "Transcripts"))
+        XCTAssertNoThrow(try body.find(text: "Summaries"))
+        XCTAssertNoThrow(try body.find(text: "Recordings"))
     }
 
     func testResetButtonDisabledWhenNoCustomDir() throws {
         let settings = makeSettings()
         settings.clearCustomOutputDir()
+        settings.clearTranscriptsDir()
+        settings.clearSummariesDir()
+        settings.clearRecordingsDir()
         let body = try makeOutput(settings: settings).inspect()
-        let button = try body.find(button: "Reset")
-        XCTAssertTrue(button.isDisabled())
+        // The first Reset button (transcripts) should be disabled when no
+        // custom dir is set.
+        let buttons = body.findAll(ViewType.Button.self)
+        let resetButtons = buttons.filter { (try? $0.find(text: "Reset")) != nil }
+        XCTAssertFalse(resetButtons.isEmpty, "Should have at least one Reset button")
+        XCTAssertTrue(resetButtons.first!.isDisabled(), "Reset should be disabled when no custom dir")
     }
 
     func testEditPromptButtonExists() throws {
@@ -473,6 +482,11 @@ final class SettingsViewTests: XCTestCase { // swiftlint:disable:this type_body_
     func testImportPromptButtonExists() throws {
         let body = try makeOutput().inspect()
         XCTAssertNoThrow(try body.find(button: "Import Prompt"))
+    }
+
+    func testChoosePromptFileButtonExists() throws {
+        let body = try makeOutput().inspect()
+        XCTAssertNoThrow(try body.find(button: "Choose Prompt File\u{2026}"))
     }
 
     func testResetToDefaultButtonExists() throws {

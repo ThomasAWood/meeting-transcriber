@@ -9,6 +9,7 @@ struct OpenAIProtocolGenerator: ProtocolGenerating {
     let model: String
     let apiKey: String?
     let language: String
+    let promptFileURL: URL
     /// Idle timeout (`URLRequest.timeoutInterval`): max time *between* received
     /// bytes. Catches a fully-stalled connection, but does NOT bound total time —
     /// a slow-but-trickling stream resets it on every byte. See `maxTotalSeconds`.
@@ -34,11 +35,13 @@ struct OpenAIProtocolGenerator: ProtocolGenerating {
         maxTotalSeconds: TimeInterval = 1800,
         maxOutputTokens: Int = 16000,
         session: URLSession = .shared,
+        promptFileURL: URL = AppPaths.customPromptFile,
     ) {
         self.endpoint = endpoint
         self.model = model
         self.language = language
         self.apiKey = apiKey
+        self.promptFileURL = promptFileURL
         self.timeoutSeconds = timeoutSeconds
         self.maxTotalSeconds = maxTotalSeconds
         self.maxOutputTokens = maxOutputTokens
@@ -50,7 +53,7 @@ struct OpenAIProtocolGenerator: ProtocolGenerating {
     }
 
     func generate(transcript: String, title _: String, diarized: Bool, participants: [String]?) async throws -> String {
-        let systemPrompt = ProtocolGenerator.buildSystemPrompt(diarized: diarized, language: language, participants: participants)
+        let systemPrompt = ProtocolGenerator.buildSystemPrompt(diarized: diarized, language: language, participants: participants, promptFileURL: promptFileURL)
 
         let messages: [[String: Any]] = [
             ["role": "system", "content": systemPrompt],

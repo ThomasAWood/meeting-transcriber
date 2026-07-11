@@ -50,31 +50,37 @@ struct OutputSettingsView: View {
     var body: some View {
         // swiftlint:disable:next closure_body_length
         Form {
-            // TODO: Update UI to support three separate folder pickers (G1)
-            // Section("Output Folder") {
-            //     HStack {
-            //         Text("Output Folder")
-            //         Spacer()
-            //         Text(outputDirDisplay)
-            //             .foregroundStyle(.secondary)
-            //             .lineLimit(1)
-            //             .truncationMode(.middle)
-            //     }
-            //
-            //     HStack {
-            //         Button("Choose\u{2026}") {
-            //             chooseOutputFolder()
-            //         }
-            //
-            //         Button("Reset") {
-            //             settings.clearCustomOutputDir()
-            //         }
-            //         .disabled(settings.customOutputDirBookmark == nil)
-            //
-            //         Spacer()
-            //     }
-            // }
-            // .accessibilityIdentifier("outputFolderSection")
+            // Output folders apply to record-only AND protocol mode, so this
+            // section deliberately sits outside the .recordOnlyDisabled block.
+            Section("Output Folders") {
+                folderRow(
+                    label: "Transcripts",
+                    effectiveDir: settings.effectiveTranscriptsDir,
+                    hasCustom: settings.transcriptsDirBookmark != nil,
+                    onChoose: { chooseFolder { url in settings.setTranscriptsDir(url) } },
+                    onReset: { settings.clearTranscriptsDir() },
+                )
+                .accessibilityIdentifier("transcriptsFolderRow")
+
+                folderRow(
+                    label: "Summaries",
+                    effectiveDir: settings.effectiveSummariesDir,
+                    hasCustom: settings.summariesDirBookmark != nil,
+                    onChoose: { chooseFolder { url in settings.setSummariesDir(url) } },
+                    onReset: { settings.clearSummariesDir() },
+                )
+                .accessibilityIdentifier("summariesFolderRow")
+
+                folderRow(
+                    label: "Recordings",
+                    effectiveDir: settings.effectiveRecordingsDir,
+                    hasCustom: settings.recordingsDirBookmark != nil,
+                    onChoose: { chooseFolder { url in settings.setRecordingsDir(url) } },
+                    onReset: { settings.clearRecordingsDir() },
+                )
+                .accessibilityIdentifier("recordingsFolderRow")
+            }
+            .accessibilityIdentifier("outputFolderSection")
 
             Section("Protocol Generation") {
                 Picker("LLM Provider", selection: $settings.protocolProvider) {
@@ -223,35 +229,49 @@ struct OutputSettingsView: View {
 
     private var promptControls: some View {
         // swiftlint:disable:next closure_body_length
-        HStack {
-            Button("Edit Prompt") {
-                openCustomPrompt()
-                refreshCustomPromptState()
-            }
-
-            Button("Import Prompt") {
-                importCustomPrompt()
-                refreshCustomPromptState()
-            }
-
-            Button("Reset to Default") {
-                showResetPromptConfirmation = true
-            }
-            .disabled(!hasCustomPrompt)
-            .confirmationDialog(
-                "Reset protocol prompt to the built-in default?",
-                isPresented: $showResetPromptConfirmation,
-                titleVisibility: .visible,
-            ) {
-                Button("Reset", role: .destructive) {
-                    try? FileManager.default.removeItem(at: settings.effectiveCustomPromptFile)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Button("Edit Prompt") {
+                    openCustomPrompt()
                     refreshCustomPromptState()
                 }
+
+                Button("Choose Prompt File\u{2026}") {
+                    choosePromptFile()
+                    refreshCustomPromptState()
+                }
+
+                Button("Import Prompt") {
+                    importCustomPrompt()
+                    refreshCustomPromptState()
+                }
+
+                Button("Reset to Default") {
+                    showResetPromptConfirmation = true
+                }
+                .disabled(!hasCustomPrompt)
+                .confirmationDialog(
+                    "Reset protocol prompt to the built-in default?",
+                    isPresented: $showResetPromptConfirmation,
+                    titleVisibility: .visible,
+                ) {
+                    Button("Reset", role: .destructive) {
+                        settings.clearCustomPromptFile()
+                        try? FileManager.default.removeItem(at: AppPaths.customPromptFile)
+                        refreshCustomPromptState()
+                    }
+                }
+
+                Spacer()
             }
 
-            Spacer()
-
-            if hasCustomPrompt {
+            if settings.customPromptFileBookmark != nil {
+                Text("Prompt file: \(settings.effectiveCustomPromptFile.lastPathComponent)")
+                    .font(.caption)
+                    .foregroundStyle(.blue)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            } else if hasCustomPrompt {
                 Label("Custom prompt active", systemImage: "doc.text.fill")
                     .foregroundStyle(.blue)
                     .font(.caption)
@@ -336,22 +356,65 @@ struct OutputSettingsView: View {
         }
     }
 
-    // TODO: Update after implementing three separate folder pickers
-    // private var outputDirDisplay: String {
-    //     OutputSettingsLogic.displayPath(
-    //         for: settings.effectiveOutputDir,
-    //         home: FileManager.default.homeDirectoryForCurrentUser,
-    //     )
-    // }
-    //
-    // private func chooseOutputFolder() {
-    //     let panel = NSOpenPanel()
-    //     panel.canChooseDirectories = true
-    //     panel.canChooseFiles = false
-    //     panel.canCreateDirectories = true
-    //     panel.allowsMultipleSelection = false
-    //     panel.message = "Choose a folder for protocol output"
-    //     guard panel.runModal() == .OK, let url = panel.url else { return }
-    //     settings.setCustomOutputDir(url)
-    // }
+    /// Choose an arbitrary prompt file stored as a security-scoped bookmark,
+    /// read live at generation time. Supersedes the copy-based import — the
+    /// file stays wherever it is.
+    private func choosePromptFile() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.plainText, .init(filenameExtension: "md")].compactMap(\.self)
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.message = "Select a prompt file to use (read live at generation time)"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        settings.setCustomPromptFile(url)
+    }
+
+    // MARK: - Folder picker helpers
+
+    /// A reusable row for a single output folder: label, current path, and
+    /// Choose/Reset buttons. `hasCustom` drives the Reset button's disabled
+    /// state (only enabled when a user has overridden the default).
+    @ViewBuilder
+    private func folderRow(
+        label: String,
+        effectiveDir: URL,
+        hasCustom: Bool,
+        onChoose: @escaping () -> Void,
+        onReset: @escaping () -> Void,
+    ) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Text(folderDisplayPath(effectiveDir))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+
+        HStack {
+            Button("Choose\u{2026}", action: onChoose)
+            Button("Reset", action: onReset)
+                .disabled(!hasCustom)
+            Spacer()
+        }
+    }
+
+    private func folderDisplayPath(_ url: URL) -> String {
+        OutputSettingsLogic.displayPath(
+            for: url,
+            home: FileManager.default.homeDirectoryForCurrentUser,
+        )
+    }
+
+    /// Open a directory picker; call `onPick` with the selected URL.
+    private func chooseFolder(onPick: @escaping (URL) -> Void) {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.message = "Choose a folder"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        onPick(url)
+    }
 }

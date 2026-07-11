@@ -123,7 +123,7 @@ final class WatchingController {
                     verboseDiagnostics: { [settings] in settings.verboseDiagnostics },
                     recordOnly: { [settings] in settings.recordOnly },
                     recordOnlyDestination: { [settings] in
-                        .production(parent: settings.effectiveOutputDir)
+                        .recordingsDir(settings.effectiveRecordingsDir)
                     },
                     notifier: notifier,
                 )
@@ -161,7 +161,7 @@ final class WatchingController {
                 verboseDiagnostics: { [settings] in settings.verboseDiagnostics },
                 recordOnly: { [settings] in settings.recordOnly },
                 recordOnlyDestination: { [settings] in
-                    .production(parent: settings.effectiveOutputDir)
+                    .recordingsDir(settings.effectiveRecordingsDir)
                 },
                 notifier: notifier,
             )

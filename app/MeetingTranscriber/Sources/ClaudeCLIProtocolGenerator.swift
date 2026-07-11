@@ -9,8 +9,15 @@
     struct ClaudeCLIProtocolGenerator: ProtocolGenerating {
         let claudeBin: String
         let language: String
+        let promptFileURL: URL
 
         static let timeoutSeconds: TimeInterval = 600
+
+        init(claudeBin: String, language: String, promptFileURL: URL = AppPaths.customPromptFile) {
+            self.claudeBin = claudeBin
+            self.language = language
+            self.promptFileURL = promptFileURL
+        }
 
         /// Search paths for Claude CLI binaries.
         static let searchPaths = [
@@ -27,7 +34,7 @@
         }
 
         func generate(transcript: String, title _: String, diarized: Bool, participants: [String]?) async throws -> String {
-            let prompt = ProtocolGenerator.buildSystemPrompt(diarized: diarized, language: language, participants: participants) + transcript
+            let prompt = ProtocolGenerator.buildSystemPrompt(diarized: diarized, language: language, participants: participants, promptFileURL: promptFileURL) + transcript
 
             let process = Process()
             let resolvedBin = Self.resolveClaudePath(claudeBin)

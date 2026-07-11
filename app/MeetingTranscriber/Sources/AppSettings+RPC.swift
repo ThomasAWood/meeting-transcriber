@@ -108,7 +108,7 @@
         private func rpcOutputDirPath() -> String? {
             // Prioritize transcriptsDirBookmark for backward compatibility
             guard let data = transcriptsDirBookmark ?? summariesDirBookmark ?? recordingsDirBookmark else {
-                return AppPaths.protocolsDir.path
+                return AppPaths.downloadsProtocolsDir.path
             }
             var isStale = false
             guard let url = try? URL(

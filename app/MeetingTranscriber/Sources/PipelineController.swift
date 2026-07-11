@@ -148,15 +148,16 @@ final class PipelineController {
     // routing) that is unit-tested directly, same altitude as the other wiring
     // methods above.
     func makeProtocolGenerator() -> (any ProtocolGenerating)? {
-        switch settings.protocolProvider {
+        let promptURL = settings.effectiveCustomPromptFile
+        return switch settings.protocolProvider {
         #if !APPSTORE
             case .claudeCLI:
-                ClaudeCLIProtocolGenerator(claudeBin: settings.claudeBin, language: settings.protocolLanguage)
+                ClaudeCLIProtocolGenerator(claudeBin: settings.claudeBin, language: settings.protocolLanguage, promptFileURL: promptURL)
 
             case .cliAgent:
                 // Empty command → treat like `.none` (transcript only) rather
                 // than launching a misconfigured process.
-                cliAgentGenerator()
+                cliAgentGenerator(promptURL: promptURL)
         #endif
 
         case .openAICompatible:
@@ -167,6 +168,7 @@ final class PipelineController {
                 model: settings.openAIModel,
                 language: settings.protocolLanguage,
                 apiKey: settings.openAIAPIKey.isEmpty ? nil : settings.openAIAPIKey,
+                promptFileURL: promptURL,
             )
 
         case .none:
@@ -177,10 +179,10 @@ final class PipelineController {
     #if !APPSTORE
         /// Build the generic CLI-agent generator, or `nil` when the command is
         /// blank (blank → transcript-only, same effect as `.none`).
-        private func cliAgentGenerator() -> (any ProtocolGenerating)? {
+        private func cliAgentGenerator(promptURL: URL) -> (any ProtocolGenerating)? {
             let command = settings.cliAgentCommand.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !command.isEmpty else { return nil }
-            return CLIAgentProtocolGenerator(command: command, language: settings.protocolLanguage)
+            return CLIAgentProtocolGenerator(command: command, language: settings.protocolLanguage, promptFileURL: promptURL)
         }
     #endif
 

@@ -103,9 +103,15 @@ enum ProtocolGenerator {
     ///   - diarized: Whether diarization labels are present (adds the diarization note)
     ///   - language: Target language for `{LANGUAGE}` substitution
     ///   - participants: Optional list of participant names for `{SPEAKERS}` substitution
+    ///   - promptFileURL: URL to read the prompt template from (default: built-in location)
     /// - Returns: The fully substituted system prompt
-    static func buildSystemPrompt(diarized: Bool, language: String, participants: [String]?) -> String {
-        var prompt = applyLanguage(loadPrompt(), language: language)
+    static func buildSystemPrompt(
+        diarized: Bool,
+        language: String,
+        participants: [String]?,
+        promptFileURL: URL = AppPaths.customPromptFile,
+    ) -> String {
+        var prompt = applyLanguage(loadPrompt(from: promptFileURL), language: language)
         if let participants, !participants.isEmpty {
             let speakersList = participants.map { "- \($0)" }.joined(separator: "\n")
             prompt = prompt.replacingOccurrences(of: "{SPEAKERS}", with: speakersList)
