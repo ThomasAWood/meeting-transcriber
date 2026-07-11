@@ -297,27 +297,35 @@ high-immediate-value, so it goes **first** among the remaining phases.
      `PipelineController.makeProtocolGenerator()`; command field + stdin-contract
      caption in `OutputSettingsView`. Quote-aware tokeniser; binary resolved
      against bundle search paths → `/usr/bin/env` fallback.
-3. **G — Output routing & summary customization.** ← IN PROGRESS (2026-07-10)
-   **G1 — Three independently-configurable output folders.** ✅ DONE (backend)
+3. **G — Output routing & summary customization.** ✅ DONE (2026-07-10)
+   **G1 — Three independently-configurable output folders.** ✅ DONE
    - `AppSettings`: Added `transcriptsDirBookmark`, `summariesDirBookmark`,
      `recordingsDirBookmark`, and `customPromptFileBookmark`. Added effective
      accessors (`effectiveTranscriptsDir`, `effectiveSummariesDir`,
      `effectiveRecordingsDir`, `effectiveCustomPromptFile`). Legacy
      `effectiveOutputDir` returns `effectiveTranscriptsDir` for compatibility.
-   - `PipelineQueue`: Updated to accept three separate directories in init.
+   - `PipelineQueue`: Updated to accept three separate directories in init
+     (defaults preserve old `outputDir/protocols` + `outputDir/recordings` layout).
    - `PipelineQueue+Stages`: Updated `generateAndSaveProtocol` to accept
      transcripts/summaries/recordings directories separately. `generateProtocol`
      now writes summaries to `summariesDir` instead of appending transcript.
    - `PipelineController`: Wired three separate directories from settings.
-   - UI: **TODO** (G1) — implement three folder pickers in `OutputSettingsView`.
+   - UI: Three folder rows (Transcripts, Summaries, Recordings) in
+     `OutputSettingsView`, each with Choose/Reset buttons.
+   - `WatchLoop`: Added `RecordOnlyDestination.recordingsDir(_:)` factory;
+     `WatchingController` wired to `settings.effectiveRecordingsDir`.
 
    **G2 — Transcripts as `.md`.** ✅ DONE — `ProtocolGenerator.saveTranscript`
    already uses `.md` extension.
 
-   **G3 — Custom prompt from any file (live, arbitrary path).** ✅ DONE (backend)
+   **G3 — Custom prompt from any file (live, arbitrary path).** ✅ DONE
    - `AppSettings`: Added `customPromptFileBookmark` and `effectiveCustomPromptFile`.
-   - `ProtocolGenerator.loadPrompt`: Already supports `from: URL` parameter.
-   - UI: Uses `settings.effectiveCustomPromptFile` for prompt file path.
+   - `ProtocolGenerator.buildSystemPrompt`: Accepts `promptFileURL` parameter;
+     `loadPrompt(from:)` reads the chosen file live.
+   - All generators: Accept `promptFileURL` in init, thread to `buildSystemPrompt`.
+   - UI: 'Choose Prompt File…' button in `OutputSettingsView` storing a
+     security-scoped bookmark. `PipelineController` wires
+     `settings.effectiveCustomPromptFile` into every generator.
 
    **G4 — Speaker data passed to the prompt + split summary/transcript files.** ✅ DONE
    - `ProtocolGenerator`: Added `extractParticipants(from:)` helper to extract
@@ -330,13 +338,7 @@ high-immediate-value, so it goes **first** among the remaining phases.
      appending the transcript.
    - `SpeakerNamingSession`: Updated generateProtocol calls to use summariesDir
      and extract participants.
-   - **Tests:** Updated test mocks to conform to new API signatures.
-
-   **Remaining for G (2026-07-10):**
-   - UI implementation: Three separate folder pickers in `OutputSettingsView`
-     with choose/reset buttons and display paths.
-   - UI implementation: Prompt file picker ("Choose prompt file…" button) in
-     `OutputSettingsView`.
+   - **Tests:** Updated test mocks + SettingsViewTests + RPCSettingsStateTests.
 4. **B — EventKit calendar detector + per-calendar allowlist UI.** ✅ DONE (2026-07-10)
    - CalendarDetector.swift (MeetingDetecting conformer) with EventKit provider,
      permission helper, and pure logic (CalendarEventInfo, CalendarDetectorLogic).
