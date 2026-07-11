@@ -328,6 +328,15 @@ high-immediate-value, so it goes **first** among the remaining phases.
    - `PipelineQueue+Stages`: `generateProtocol` now extracts participants and
      passes them to the generator. Summaries are saved separately without
      appending the transcript.
+   - `SpeakerNamingSession`: Updated generateProtocol calls to use summariesDir
+     and extract participants.
+   - **Tests:** Updated test mocks to conform to new API signatures.
+
+   **Remaining for G (2026-07-10):**
+   - UI implementation: Three separate folder pickers in `OutputSettingsView`
+     with choose/reset buttons and display paths.
+   - UI implementation: Prompt file picker ("Choose prompt file…" button) in
+     `OutputSettingsView`.
 4. **B — EventKit calendar detector + per-calendar allowlist UI.** ✅ DONE (2026-07-10)
    - CalendarDetector.swift (MeetingDetecting conformer) with EventKit provider,
      permission helper, and pure logic (CalendarEventInfo, CalendarDetectorLogic).
