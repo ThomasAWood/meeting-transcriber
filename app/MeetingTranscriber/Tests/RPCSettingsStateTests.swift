@@ -137,7 +137,7 @@
             let dir = try makeTempDirectory(prefix: "RPCSettingsOutput")
             // Plain (non-security-scoped) bookmark data resolves fine under the
             // snapshot's `.withoutUI/.withoutMounting` read-only options.
-            settings.customOutputDirBookmark = try dir.bookmarkData()
+            settings.transcriptsDirBookmark = try dir.bookmarkData()
 
             let s = settings.rpcSettingsSnapshot()
 
@@ -152,7 +152,7 @@
 
         func test_snapshot_output_unresolvableBookmarkIsNilAndNotRepaired() {
             let garbage = Data([0xDE, 0xAD, 0xBE, 0xEF])
-            settings.customOutputDirBookmark = garbage
+            settings.transcriptsDirBookmark = garbage
 
             let s = settings.rpcSettingsSnapshot()
 
@@ -160,7 +160,7 @@
             XCTAssertNil(s.output.directory, "unresolvable custom dir must report null, not a wrong fallback")
             // Read-only guarantee: the snapshot must never rewrite the persisted
             // bookmark (unlike `effectiveOutputDir`'s stale-repair path).
-            XCTAssertEqual(settings.customOutputDirBookmark, garbage)
+            XCTAssertEqual(settings.transcriptsDirBookmark, garbage)
         }
 
         // MARK: - Secrets never reach the wire

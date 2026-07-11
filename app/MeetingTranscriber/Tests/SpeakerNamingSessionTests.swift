@@ -47,7 +47,7 @@ final class SpeakerNamingSessionTests: XCTestCase {
             updateSpeakerDBCallCount += 1
         }
 
-        func generateProtocol(jobID: UUID, transcript _: String, title: String, protocolsDir _: URL) {
+        func generateProtocol(jobID: UUID, transcript _: String, title: String, summariesDir _: URL, participants _: [String]?) {
             generateProtocolCalls.append((jobID, title))
         }
 
@@ -237,7 +237,7 @@ final class SpeakerNamingSessionTests: XCTestCase {
             embeddings _: [String: [Float]], speakingTimes _: [String: TimeInterval],
         ) {}
 
-        func generateProtocol(jobID _: UUID, transcript _: String, title _: String, protocolsDir _: URL) async {
+        func generateProtocol(jobID _: UUID, transcript _: String, title _: String, summariesDir _: URL, participants _: [String]?) async {
             recorder.generateProtocolEntered += 1
             await withCheckedContinuation { recorder.protocolGate = $0 }
         }

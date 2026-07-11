@@ -373,13 +373,19 @@ class MockProtocolGen: ProtocolGenerating {
     var capturedTitle: String?
     // swiftlint:disable:next discouraged_optional_boolean
     var capturedDiarized: Bool?
+    var capturedParticipants: [String]?
     var shouldThrow = false
 
-    func generate(transcript: String, title: String, diarized: Bool) throws -> String {
+    func generate(transcript: String, title: String, diarized: Bool) async throws -> String {
+        try await generate(transcript: transcript, title: title, diarized: diarized, participants: nil)
+    }
+
+    func generate(transcript: String, title: String, diarized: Bool, participants: [String]?) async throws -> String {
         generateCalled = true
         capturedTranscript = transcript
         capturedTitle = title
         capturedDiarized = diarized
+        capturedParticipants = participants
         if shouldThrow {
             throw NSError(
                 domain: "MockProtocolGen",
