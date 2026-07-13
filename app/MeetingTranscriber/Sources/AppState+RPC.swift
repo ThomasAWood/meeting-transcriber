@@ -138,7 +138,6 @@
         private func permissionHealthSnapshot() -> RPCStateSnapshot.PermissionHealth {
             guard let health = permissions.health else { return .unknown }
             return RPCStateSnapshot.PermissionHealth(
-                screenRecording: health.screenRecording.rpcValue,
                 microphone: health.microphone.rpcValue,
                 accessibility: health.accessibility.rpcValue,
                 isHealthy: health.isHealthy,

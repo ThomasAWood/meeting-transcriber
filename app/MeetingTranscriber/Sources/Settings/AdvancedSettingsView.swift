@@ -7,7 +7,6 @@ import SwiftUI
 private let logger = Logger(subsystem: AppPaths.logSubsystem, category: "AdvancedSettingsView")
 
 private enum PrivacyPane: String {
-    case screenCapture = "Privacy_ScreenCapture"
     case microphone = "Privacy_Microphone"
     case accessibility = "Privacy_Accessibility"
 
@@ -20,7 +19,6 @@ struct AdvancedSettingsView: View {
     @Bindable var settings: AppSettings
 
     @State private var micPermission: AVAuthorizationStatus = .notDetermined
-    @State private var screenRecordingOK = false
     @State private var accessibilityOK = false
     @State private var lastExportFile: String?
     @State private var lastExportError: String?
@@ -33,13 +31,6 @@ struct AdvancedSettingsView: View {
         // swiftlint:disable:next closure_body_length
         Form {
             Section("Permissions") {
-                PermissionRow(
-                    label: "Screen Recording",
-                    detail: Self.screenRecordingDetail,
-                    granted: screenRecordingOK,
-                    help: "System Settings → Privacy & Security → Screen Recording → enable Meeting Transcriber",
-                    settingsURL: PrivacyPane.screenCapture.url,
-                )
                 PermissionRow(
                     label: "Microphone",
                     detail: micPermission == .authorized ? "Granted"
@@ -142,12 +133,6 @@ struct AdvancedSettingsView: View {
         .onAppear { refreshPermissions() }
     }
 
-    #if APPSTORE
-        private static let screenRecordingDetail = "Required for app audio capture"
-    #else
-        private static let screenRecordingDetail = "Required for meeting detection and app audio capture"
-    #endif
-
     private static let versionString: String = {
         let version = Bundle.main.appVersion
         let commit = Bundle.main.gitCommitHash
@@ -171,7 +156,6 @@ struct AdvancedSettingsView: View {
 
     private func refreshPermissions() {
         micPermission = AVCaptureDevice.authorizationStatus(for: .audio)
-        screenRecordingOK = Permissions.checkScreenRecording()
         accessibilityOK = AXIsProcessTrusted()
     }
 

@@ -1,28 +1,24 @@
-import CoreGraphics
+import Foundation
 
-/// Pattern definition for detecting active meetings via window titles.
+/// Identity record for a known meeting app. Carries only the fields the
+/// power-assertion / calendar detectors use: `appName` (for assertion-pattern
+/// matching + the detected meeting's app label) and `ownerNames` (the on-screen
+/// process names an app is known under, kept as documentation / for future use).
+///
+/// Window-title detection (regexes, idle patterns, minimum window size) lived
+/// here too but was removed along with the Screen Recording permission: it was
+/// the only code path that needed `CGWindowListCopyWindowInfo`. Detection is now
+/// calendar-driven + power-assertion based, neither of which needs SR.
 struct AppMeetingPattern: Equatable {
     let appName: String
     let ownerNames: [String]
-    let meetingPatterns: [String]
-    let idlePatterns: [String]
-    let minWindowWidth: CGFloat
-    let minWindowHeight: CGFloat
 
     init(
         appName: String,
         ownerNames: [String],
-        meetingPatterns: [String],
-        idlePatterns: [String] = [],
-        minWindowWidth: CGFloat = 200,
-        minWindowHeight: CGFloat = 200,
     ) {
         self.appName = appName
         self.ownerNames = ownerNames
-        self.meetingPatterns = meetingPatterns
-        self.idlePatterns = idlePatterns
-        self.minWindowWidth = minWindowWidth
-        self.minWindowHeight = minWindowHeight
     }
 }
 
@@ -30,52 +26,16 @@ extension AppMeetingPattern {
     static let teams = AppMeetingPattern(
         appName: "Microsoft Teams",
         ownerNames: ["Microsoft Teams", "Microsoft Teams (work or school)"],
-        meetingPatterns: [
-            #".+\s+\|\s+Microsoft Teams"#,
-        ],
-        idlePatterns: [
-            #"^Microsoft Teams$"#,
-            #"^Microsoft Teams \(work or school\)$"#,
-            #"^Chat \|"#,
-            #"^Activity \|"#,
-            #"^Calendar \|"#,
-            #"^Teams \|"#,
-            #"^Files \|"#,
-            #"^Assignments \|"#,
-            #"^Settings \|"#,
-            #"^Calls \|"#,
-            #"^People \|"#,
-            #"^Notifications \|"#,
-        ],
     )
 
     static let zoom = AppMeetingPattern(
         appName: "Zoom",
         ownerNames: ["zoom.us"],
-        meetingPatterns: [
-            #"^Zoom Meeting$"#,
-            #"^Zoom Webinar$"#,
-            #".+\s*-\s*Zoom$"#,
-        ],
-        idlePatterns: [
-            #"^Zoom$"#,
-            #"^Zoom Workplace$"#,
-            #"^Home$"#,
-        ],
     )
 
     static let webex = AppMeetingPattern(
         appName: "Webex",
         ownerNames: ["Webex", "Cisco Webex Meetings"],
-        meetingPatterns: [
-            #".+\s*-\s*Webex$"#,
-            #"^Meeting \|"#,
-            #".+'s Personal Room"#,
-        ],
-        idlePatterns: [
-            #"^Webex$"#,
-            #"^Cisco Webex Meetings$"#,
-        ],
     )
 
     /// Debug simulator for testing the full pipeline without a real meeting app.
@@ -83,11 +43,6 @@ extension AppMeetingPattern {
     static let simulator = AppMeetingPattern(
         appName: "MeetingSimulator",
         ownerNames: ["meeting-simulator"],
-        meetingPatterns: [
-            #"Simulator Meeting"#,
-        ],
-        minWindowWidth: 100,
-        minWindowHeight: 100,
     )
 
     static let all: [AppMeetingPattern] = [teams, zoom, webex, simulator]

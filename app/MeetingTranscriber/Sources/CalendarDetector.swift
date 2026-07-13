@@ -208,8 +208,7 @@ final class CalendarDetector: MeetingDetecting {
         return DetectedMeeting(
             pattern: AppMeetingPattern(
                 appName: "Calendar",
-                ownerNames: [],
-                meetingPatterns: []
+                ownerNames: []
             ),
             windowTitle: activeEvent.title.isEmpty ? "Calendar Event" : activeEvent.title,
             ownerName: "",

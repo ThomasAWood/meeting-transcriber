@@ -19,7 +19,6 @@
 
         func testUnknownPlaceholderIsNotHealthy() {
             let unknown = RPCStateSnapshot.PermissionHealth.unknown
-            XCTAssertEqual(unknown.screenRecording, "unknown")
             XCTAssertEqual(unknown.microphone, "unknown")
             XCTAssertEqual(unknown.accessibility, "unknown")
             // "not yet checked" must not read as healthy.
@@ -39,7 +38,6 @@
                 speakerDB: .init(count: 0, recentNames: [], knownSpeakerNames: []),
                 pendingNamingJobs: [],
                 permissionHealth: .init(
-                    screenRecording: "healthy",
                     microphone: "broken",
                     accessibility: "denied",
                     isHealthy: false,
@@ -48,7 +46,6 @@
             let json = try XCTUnwrap(String(data: snapshot.jsonData(), encoding: .utf8))
             // jsonData() is pretty-printed with sorted keys → `"key" : "value"`.
             XCTAssertTrue(json.contains("\"permissionHealth\""), json)
-            XCTAssertTrue(json.contains("\"screenRecording\" : \"healthy\""), json)
             XCTAssertTrue(json.contains("\"microphone\" : \"broken\""), json)
             XCTAssertTrue(json.contains("\"accessibility\" : \"denied\""), json)
         }

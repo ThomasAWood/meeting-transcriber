@@ -24,7 +24,6 @@ private func makeAssertionDict(
 
 private func makeDetector(confirmationCount: Int = 1) -> PowerAssertionDetector {
     let detector = PowerAssertionDetector(confirmationCount: confirmationCount)
-    detector.windowListProvider = { [] } // no real windows in unit tests
     return detector
 }
 
@@ -402,9 +401,9 @@ final class PowerAssertionDetectorTests: XCTestCase {
         XCTAssertNotNil(detector.checkOnce())
     }
 
-    // MARK: - Window Title Lookup
+    // MARK: - Window Title (now always assertion name)
 
-    func testWindowTitleUsedWhenFound() {
+    func testAssertionNameUsedAsTitle() {
         let detector = makeDetector()
         detector.assertionProvider = {
             makeAssertionDict(
@@ -413,67 +412,9 @@ final class PowerAssertionDetectorTests: XCTestCase {
                 assertName: "Microsoft Teams Call in progress",
             )
         }
-        detector.windowListProvider = {
-            [[
-                "kCGWindowOwnerName": "Microsoft Teams",
-                "kCGWindowName": "Sprint Review | Microsoft Teams",
-                "kCGWindowOwnerPID": Int32(1438),
-            ]]
-        }
-        let result = detector.checkOnce()
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.windowTitle, "Sprint Review | Microsoft Teams")
-    }
-
-    func testAssertionNameUsedWhenNoWindowFound() {
-        let detector = makeDetector()
-        detector.assertionProvider = {
-            makeAssertionDict(
-                pid: 1438,
-                processName: "MSTeams",
-                assertName: "Microsoft Teams Call in progress",
-            )
-        }
-        // No matching windows
-        detector.windowListProvider = { [] }
         let result = detector.checkOnce()
         XCTAssertNotNil(result)
         XCTAssertEqual(result?.windowTitle, "Microsoft Teams Call in progress")
-    }
-
-    func testWindowTitleSkipsEmptyAndAppNameOnly() {
-        let detector = makeDetector()
-        detector.assertionProvider = {
-            makeAssertionDict(
-                pid: 1438,
-                processName: "MSTeams",
-                assertName: "Microsoft Teams Call in progress",
-            )
-        }
-        detector.windowListProvider = {
-            [
-                // Empty title — should be skipped
-                [
-                    "kCGWindowOwnerName": "Microsoft Teams",
-                    "kCGWindowName": "",
-                    "kCGWindowOwnerPID": Int32(1438),
-                ],
-                // Title equals app name — should be skipped
-                [
-                    "kCGWindowOwnerName": "Microsoft Teams",
-                    "kCGWindowName": "Microsoft Teams",
-                    "kCGWindowOwnerPID": Int32(1438),
-                ],
-                // Real meeting title
-                [
-                    "kCGWindowOwnerName": "Microsoft Teams",
-                    "kCGWindowName": "Daily Standup | Microsoft Teams",
-                    "kCGWindowOwnerPID": Int32(1438),
-                ],
-            ]
-        }
-        let result = detector.checkOnce()
-        XCTAssertEqual(result?.windowTitle, "Daily Standup | Microsoft Teams")
     }
 
     // MARK: - Reset Without App Name

@@ -164,7 +164,7 @@ final class CalendarDetectorTests: XCTestCase {
         // First, establish the meeting in detector state
         _ = detector.checkOnce()
 
-        XCTAssertTrue(detector.isMeetingActive(DetectedMeeting(pattern: AppMeetingPattern(appName: "Calendar", ownerNames: [], meetingPatterns: []), windowTitle: "", ownerName: "", windowPID: 0)), "Should be active before end")
+        XCTAssertTrue(detector.isMeetingActive(DetectedMeeting(pattern: AppMeetingPattern(appName: "Calendar", ownerNames: []), windowTitle: "", ownerName: "", windowPID: 0)), "Should be active before end")
 
         // Move time past end
         let detectorAfterEnd = CalendarDetector(
@@ -173,7 +173,7 @@ final class CalendarDetectorTests: XCTestCase {
             nowProvider: { eventEnd.addingTimeInterval(1) }
         )
         _ = detectorAfterEnd.checkOnce() // Must call checkOnce to update the internal currentEvent
-        XCTAssertFalse(detectorAfterEnd.isMeetingActive(DetectedMeeting(pattern: AppMeetingPattern(appName: "Calendar", ownerNames: [], meetingPatterns: []), windowTitle: "", ownerName: "", windowPID: 0)), "Should not be active after end")
+        XCTAssertFalse(detectorAfterEnd.isMeetingActive(DetectedMeeting(pattern: AppMeetingPattern(appName: "Calendar", ownerNames: []), windowTitle: "", ownerName: "", windowPID: 0)), "Should not be active after end")
     }
 
     func testCalendarDetector_Reset() {
@@ -203,7 +203,7 @@ extension DetectedMeeting {
     /// A helper to create a meeting with a specific end date for testing isMeetingActive.
     static func mock(end: Date) -> DetectedMeeting {
         DetectedMeeting(
-            pattern: AppMeetingPattern(appName: "Calendar", ownerNames: [], meetingPatterns: []),
+            pattern: AppMeetingPattern(appName: "Calendar", ownerNames: []),
             windowTitle: "",
             ownerName: "",
             windowPID: 0,

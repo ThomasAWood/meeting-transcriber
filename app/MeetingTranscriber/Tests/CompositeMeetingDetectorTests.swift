@@ -38,7 +38,7 @@ private final class StubDetector: MeetingDetecting {
 
 private func makeMeeting(appName: String, pid: pid_t = 1) -> DetectedMeeting {
     DetectedMeeting(
-        pattern: AppMeetingPattern(appName: appName, ownerNames: [], meetingPatterns: []),
+        pattern: AppMeetingPattern(appName: appName, ownerNames: []),
         windowTitle: appName,
         ownerName: "",
         windowPID: pid,

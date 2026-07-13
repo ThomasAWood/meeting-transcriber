@@ -677,7 +677,7 @@ final class AppStateTests: XCTestCase { // swiftlint:disable:this type_body_leng
 
     func testStartManualRecordingSendsNotification() async {
         let (state, notifier) = makeState()
-        state.permissions.handle(HealthCheckResult(screenRecording: .healthy, microphone: .healthy))
+        state.permissions.handle(HealthCheckResult(microphone: .healthy))
         addTeardownBlock { state.watching.watchLoop?.stop() }
 
         state.watching.startManualRecording(pid: 1234, appName: "Chrome", title: "Standup")
@@ -692,7 +692,7 @@ final class AppStateTests: XCTestCase { // swiftlint:disable:this type_body_leng
 
     func testStartManualRecordingStopsExistingAutoWatchLoop() async {
         let (state, _) = makeState()
-        state.permissions.handle(HealthCheckResult(screenRecording: .healthy, microphone: .healthy))
+        state.permissions.handle(HealthCheckResult(microphone: .healthy))
         let (existingLoop, _) = makeTestWatchLoop()
         existingLoop.start()
         state.watching.watchLoop = existingLoop

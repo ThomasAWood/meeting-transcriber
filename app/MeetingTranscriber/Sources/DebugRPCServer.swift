@@ -524,8 +524,11 @@
         /// (`SCScreenshotManager.captureImage`) — the non-deprecated successor
         /// to `CGWindowListCreateImage`. Unlike the old API, SCK requires
         /// Screen Recording permission even for self-capture; the first
-        /// request triggers the standard TCC prompt. Acceptable for this
-        /// debug-only path (whole file is `#if !APPSTORE`, RPC is opt-in).
+        /// request triggers the standard TCC prompt. This debug-only endpoint
+        /// is now the app's *sole* Screen Recording touchpoint — meeting
+        /// detection no longer uses SR — so a user who never calls `/screenshot`
+        /// will never be prompted. Acceptable here (whole file is
+        /// `#if !APPSTORE`, RPC is opt-in).
         @MainActor
         static func captureFrontmostWindowPNG() async -> Data? {
             let app = NSApplication.shared

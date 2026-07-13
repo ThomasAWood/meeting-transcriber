@@ -277,7 +277,7 @@ final class WatchLoopTests: XCTestCase {
     func testManualRecordingFailsWhenPermissionBroken() async {
         let (loop, _) = makeTestWatchLoop()
         loop.permissionChecker = {
-            HealthCheckResult(screenRecording: .healthy, microphone: .broken)
+            HealthCheckResult(microphone: .broken)
         }
 
         do {
@@ -443,7 +443,7 @@ final class WatchLoopTests: XCTestCase {
     func testManualRecordingProceedsWhenPermissionsHealthy() async throws {
         let (loop, recorder) = makeTestWatchLoop()
         loop.permissionChecker = {
-            HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+            HealthCheckResult(microphone: .healthy)
         }
         recorder.mixPath = URL(fileURLWithPath: "/tmp/test_mix.wav")
 

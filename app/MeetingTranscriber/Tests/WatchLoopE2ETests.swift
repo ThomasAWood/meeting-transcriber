@@ -284,7 +284,6 @@ final class WatchLoopE2ETests: XCTestCase { // swiftlint:disable:this balanced_x
 
     func testCooldownPreventsRedetectionAfterHandling() {
         let detector = PowerAssertionDetector(confirmationCount: 1)
-        detector.windowListProvider = { [] }
 
         let teamsAssertions: [Int32: [[String: Any]]] = [
             1234: [[

@@ -2,7 +2,6 @@
 // (process-load-immutable in practice); SDK lacks Sendable annotations.
 @preconcurrency import ApplicationServices
 import AVFoundation
-import CoreGraphics
 import Foundation
 import os
 
@@ -14,15 +13,6 @@ enum Permissions {
     /// var-classified C global doesn't escape into the rest of the file.
     static let axPromptKey: String =
         kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-
-    /// Check if Screen Recording permission is granted.
-    static func checkScreenRecording() -> Bool {
-        let granted = PermissionHealthCheck.checkScreenRecordingLive() == .healthy
-        if !granted {
-            logger.warning("permission_denied resource=screen_recording — required for meeting detection")
-        }
-        return granted
-    }
 
     static func ensureMicrophoneAccess() async -> Bool {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)

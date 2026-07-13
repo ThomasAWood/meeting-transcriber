@@ -16,8 +16,8 @@
 #     loginwindow context — service-mode runners get silent audio capture)
 #   - A virtual input device (BlackHole 2ch) so AVAudioEngine has something
 #     to bind to on Mac mini hosts without a built-in mic
-#   - System Settings → Privacy: Microphone + Screen & System Audio Recording
-#     granted to ~/Applications/MeetingTranscriber-Dev.app
+#   - System Settings → Privacy: Microphone granted to
+#     ~/Applications/MeetingTranscriber-Dev.app
 #   See scripts/setup-self-hosted-runner.sh for the bootstrap flow.
 
 set -euo pipefail

@@ -3,69 +3,6 @@ import AVFoundation
 import XCTest
 
 final class PermissionHealthCheckTests: XCTestCase {
-    // MARK: - Screen Recording (trusts the system TCC verdict)
-
-    func testScreenRecordingHealthyWhenSystemAllows() {
-        // Regression (issue #446): absence of a readable foreign window title is
-        // not proof of a broken grant — on recent macOS the window list omits
-        // foreign titles even when Screen Recording is granted, which produced
-        // false `.broken` verdicts (persistent red error badge). Trust the
-        // system TCC verdict instead.
-        XCTAssertEqual(PermissionHealthCheck.checkScreenRecording(systemAllowed: true), .healthy)
-    }
-
-    func testScreenRecordingDeniedWhenSystemSaysNo() {
-        XCTAssertEqual(PermissionHealthCheck.checkScreenRecording(systemAllowed: false), .denied)
-    }
-
-    // MARK: - Screen Recording (window list parser)
-
-    func testHasForeignWindowWithTitleTrue() {
-        let result = PermissionHealthCheck.hasForeignWindowWithTitle(
-            windowList: [
-                [kCGWindowOwnerPID as String: Int32(999), kCGWindowName as String: "Finder"],
-            ],
-            ownPID: 123,
-        )
-        XCTAssertTrue(result)
-    }
-
-    func testHasForeignWindowWithTitleNilList() {
-        let result = PermissionHealthCheck.hasForeignWindowWithTitle(
-            windowList: nil,
-            ownPID: 123,
-        )
-        XCTAssertFalse(result)
-    }
-
-    func testHasForeignWindowWithTitleIgnoresOwnPID() {
-        let result = PermissionHealthCheck.hasForeignWindowWithTitle(
-            windowList: [
-                [kCGWindowOwnerPID as String: Int32(123), kCGWindowName as String: "My App"],
-            ],
-            ownPID: 123,
-        )
-        XCTAssertFalse(result)
-    }
-
-    func testHasForeignWindowWithTitleEmptyTitle() {
-        let result = PermissionHealthCheck.hasForeignWindowWithTitle(
-            windowList: [
-                [kCGWindowOwnerPID as String: Int32(999), kCGWindowName as String: ""],
-            ],
-            ownPID: 123,
-        )
-        XCTAssertFalse(result)
-    }
-
-    func testHasForeignWindowWithTitleEmptyList() {
-        let result = PermissionHealthCheck.hasForeignWindowWithTitle(
-            windowList: [],
-            ownPID: 123,
-        )
-        XCTAssertFalse(result)
-    }
-
     // MARK: - Microphone
 
     func testMicHealthy() {
@@ -144,7 +81,6 @@ final class PermissionHealthCheckTests: XCTestCase {
 
     func testOverallHealthy() {
         let result = PermissionHealthCheck.overallHealth(
-            screenRecording: .healthy,
             microphone: .healthy,
             accessibility: .healthy,
         )
@@ -152,21 +88,14 @@ final class PermissionHealthCheckTests: XCTestCase {
         XCTAssertTrue(result.problems.isEmpty)
     }
 
-    func testOverallScreenBroken() {
-        let result = PermissionHealthCheck.overallHealth(screenRecording: .broken, microphone: .healthy)
-        XCTAssertFalse(result.isHealthy)
-        XCTAssertEqual(result.problems, [.screenRecordingBroken])
-    }
-
     func testOverallMicBroken() {
-        let result = PermissionHealthCheck.overallHealth(screenRecording: .healthy, microphone: .broken)
+        let result = PermissionHealthCheck.overallHealth(microphone: .broken)
         XCTAssertFalse(result.isHealthy)
         XCTAssertEqual(result.problems, [.microphoneBroken])
     }
 
     func testOverallAccessibilityBroken() {
         let result = PermissionHealthCheck.overallHealth(
-            screenRecording: .healthy,
             microphone: .healthy,
             accessibility: .broken,
         )
@@ -176,64 +105,46 @@ final class PermissionHealthCheckTests: XCTestCase {
 
     func testOverallAccessibilityDenied() {
         let result = PermissionHealthCheck.overallHealth(
-            screenRecording: .healthy,
             microphone: .healthy,
             accessibility: .denied,
         )
         XCTAssertEqual(result.problems, [.accessibilityDenied])
     }
 
-    func testOverallAllThreeBroken() {
+    func testOverallBothBroken() {
         let result = PermissionHealthCheck.overallHealth(
-            screenRecording: .broken,
             microphone: .broken,
             accessibility: .broken,
         )
         XCTAssertFalse(result.isHealthy)
-        XCTAssertEqual(result.problems.count, 3)
-        XCTAssertTrue(result.problems.contains(.screenRecordingBroken))
+        XCTAssertEqual(result.problems.count, 2)
         XCTAssertTrue(result.problems.contains(.microphoneBroken))
         XCTAssertTrue(result.problems.contains(.accessibilityBroken))
     }
 
     func testOverallMicNotDeterminedIsHealthy() {
-        let result = PermissionHealthCheck.overallHealth(screenRecording: .healthy, microphone: .notDetermined)
+        let result = PermissionHealthCheck.overallHealth(microphone: .notDetermined)
         XCTAssertTrue(result.isHealthy)
     }
 
     func testOverallAccessibilityNotDeterminedIsHealthy() {
         let result = PermissionHealthCheck.overallHealth(
-            screenRecording: .healthy,
             microphone: .healthy,
             accessibility: .notDetermined,
         )
         XCTAssertTrue(result.isHealthy)
     }
 
-    func testOverallScreenDenied() {
-        let result = PermissionHealthCheck.overallHealth(screenRecording: .denied, microphone: .healthy)
-        XCTAssertEqual(result.problems, [.screenRecordingDenied])
-    }
-
     func testOverallMicDenied() {
-        let result = PermissionHealthCheck.overallHealth(screenRecording: .healthy, microphone: .denied)
+        let result = PermissionHealthCheck.overallHealth(microphone: .denied)
         XCTAssertEqual(result.problems, [.microphoneDenied])
     }
 
     // MARK: - Notification Message
 
-    func testBrokenScreenRecordingMessageDistinguishesFromDenied() {
-        let broken = PermissionHealthCheck.overallHealth(screenRecording: .broken, microphone: .healthy)
-        let denied = PermissionHealthCheck.overallHealth(screenRecording: .denied, microphone: .healthy)
-        XCTAssertTrue(broken.notificationBody.contains("Screen Recording"))
-        XCTAssertTrue(broken.notificationBody.contains("toggle"))
-        XCTAssertTrue(denied.notificationBody.contains("denied"))
-        XCTAssertNotEqual(broken.notificationBody, denied.notificationBody)
-    }
-
     func testBrokenMicMessageDistinguishesFromDenied() {
-        let broken = PermissionHealthCheck.overallHealth(screenRecording: .healthy, microphone: .broken)
-        let denied = PermissionHealthCheck.overallHealth(screenRecording: .healthy, microphone: .denied)
+        let broken = PermissionHealthCheck.overallHealth(microphone: .broken)
+        let denied = PermissionHealthCheck.overallHealth(microphone: .denied)
         XCTAssertTrue(broken.notificationBody.contains("Microphone"))
         XCTAssertTrue(broken.notificationBody.contains("toggle"))
         XCTAssertTrue(denied.notificationBody.contains("denied"))
@@ -242,12 +153,10 @@ final class PermissionHealthCheckTests: XCTestCase {
 
     func testBrokenAccessibilityMessageDistinguishesFromDenied() {
         let broken = PermissionHealthCheck.overallHealth(
-            screenRecording: .healthy,
             microphone: .healthy,
             accessibility: .broken,
         )
         let denied = PermissionHealthCheck.overallHealth(
-            screenRecording: .healthy,
             microphone: .healthy,
             accessibility: .denied,
         )
@@ -258,7 +167,7 @@ final class PermissionHealthCheckTests: XCTestCase {
     }
 
     func testHealthyNoMessage() {
-        let result = PermissionHealthCheck.overallHealth(screenRecording: .healthy, microphone: .healthy)
+        let result = PermissionHealthCheck.overallHealth(microphone: .healthy)
         XCTAssertTrue(result.notificationBody.isEmpty)
     }
 
@@ -266,34 +175,31 @@ final class PermissionHealthCheckTests: XCTestCase {
 
     func testLogSummaryListsEachProblemAsToken() {
         let result = PermissionHealthCheck.overallHealth(
-            screenRecording: .denied,
             microphone: .broken,
             accessibility: .broken,
         )
-        XCTAssertEqual(result.logSummary, "screen-recording=denied,microphone=broken,accessibility=broken")
+        XCTAssertEqual(result.logSummary, "microphone=broken,accessibility=broken")
     }
 
     func testLogSummaryEmptyWhenHealthy() {
-        let result = PermissionHealthCheck.overallHealth(screenRecording: .healthy, microphone: .healthy)
+        let result = PermissionHealthCheck.overallHealth(microphone: .healthy)
         XCTAssertEqual(result.logSummary, "")
     }
 
     // MARK: - HealthCheckResult Equatable
 
     func testHealthCheckResultEquality() {
-        let a = PermissionHealthCheck.overallHealth(screenRecording: .healthy, microphone: .healthy)
-        let b = PermissionHealthCheck.overallHealth(screenRecording: .healthy, microphone: .healthy)
+        let a = PermissionHealthCheck.overallHealth(microphone: .healthy)
+        let b = PermissionHealthCheck.overallHealth(microphone: .healthy)
         XCTAssertEqual(a, b)
     }
 
     func testHealthCheckResultEqualityDifferentAccessibility() {
         let a = PermissionHealthCheck.overallHealth(
-            screenRecording: .healthy,
             microphone: .healthy,
             accessibility: .healthy,
         )
         let b = PermissionHealthCheck.overallHealth(
-            screenRecording: .healthy,
             microphone: .healthy,
             accessibility: .broken,
         )

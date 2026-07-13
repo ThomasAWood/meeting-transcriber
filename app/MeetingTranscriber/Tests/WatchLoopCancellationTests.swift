@@ -53,7 +53,7 @@ final class WatchLoopCancellationTests: XCTestCase {
             sleepProvider: sleepProvider,
         )
         loop.permissionChecker = {
-            HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+            HealthCheckResult(microphone: .healthy)
         }
 
         let meeting = DetectedMeeting(
@@ -126,7 +126,7 @@ final class WatchLoopCancellationTests: XCTestCase {
             sleepProvider: sleepProvider,
         )
         loop.permissionChecker = {
-            HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+            HealthCheckResult(microphone: .healthy)
         }
 
         loop.start()

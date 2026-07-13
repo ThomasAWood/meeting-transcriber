@@ -10,14 +10,14 @@ final class ManualRecordingTests: XCTestCase {
         let mock = recorder ?? MockRecorder()
         mock.mixPath = URL(fileURLWithPath: "/tmp/test_mix.wav")
         let loop = WatchLoop(
-            detector: MeetingDetector(patterns: AppMeetingPattern.all),
+            detector: makeSilentDetector(),
             recorderFactory: { mock },
             pipelineQueue: pipelineQueue,
             pollInterval: 0.05,
             maxDuration: 10,
         )
         loop.permissionChecker = {
-            HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+            HealthCheckResult(microphone: .healthy)
         }
         return (loop, mock)
     }

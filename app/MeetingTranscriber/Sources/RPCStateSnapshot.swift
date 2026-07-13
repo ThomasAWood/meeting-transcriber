@@ -138,18 +138,16 @@
         }
 
         struct PermissionHealth: Codable {
-            let screenRecording: String
             let microphone: String
             let accessibility: String
             /// Mirror of `HealthCheckResult.isHealthy` — true only when every
             /// permission is healthy. Lets drivers assert the aggregate without
-            /// re-deriving it from the three strings.
+            /// re-deriving it from the two strings.
             let isHealthy: Bool
 
             /// Pre-check placeholder: the health check runs asynchronously at
             /// launch, so a snapshot taken before it completes reports "unknown".
             static let unknown = Self(
-                screenRecording: "unknown",
                 microphone: "unknown",
                 accessibility: "unknown",
                 isHealthy: false,

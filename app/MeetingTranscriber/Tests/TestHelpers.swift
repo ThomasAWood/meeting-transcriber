@@ -191,9 +191,19 @@ extension XCTestCase {
 
 // MARK: - WatchLoop / AppState Helpers
 
-/// Returns a MeetingDetector with no patterns — never matches any window.
-func makeSilentDetector() -> MeetingDetector {
-    MeetingDetector(patterns: [])
+/// Test-only `MeetingDetecting` stub that never returns a meeting.
+/// Used in test helpers (`makeSilentDetector`, `makeTestWatchLoop`) and
+/// ManualRecordingTests where the detector is irrelevant (manual recording
+/// bypasses detection).
+private struct SilentDetector: MeetingDetecting {
+    func checkOnce() -> DetectedMeeting? { nil }
+    func isMeetingActive(_ meeting: DetectedMeeting) -> Bool { false }
+    func reset(appName: String? = nil) {}
+}
+
+/// Returns a silent detector stub.
+func makeSilentDetector() -> any MeetingDetecting {
+    SilentDetector()
 }
 
 /// Creates a WatchLoop backed by a MockRecorder and a silent detector.
@@ -223,7 +233,7 @@ func makeTestWatchLoop(
         notifier: notifier,
     )
     loop.permissionChecker = {
-        HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+        HealthCheckResult(microphone: .healthy)
     }
     return (loop, recorder)
 }

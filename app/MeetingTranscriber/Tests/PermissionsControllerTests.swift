@@ -17,7 +17,7 @@ final class PermissionsControllerTests: XCTestCase {
     func testHandleBrokenSendsNotification() {
         let notifier = RecordingNotifier()
         let controller = PermissionsController(notifier: notifier)
-        controller.handle(HealthCheckResult(screenRecording: .broken, microphone: .healthy))
+        controller.handle(HealthCheckResult(microphone: .broken))
         XCTAssertEqual(notifier.calls.count, 1)
         XCTAssertTrue(notifier.calls.first?.title.contains("Permission") ?? false)
     }
@@ -25,13 +25,13 @@ final class PermissionsControllerTests: XCTestCase {
     func testHandleHealthyNoNotification() {
         let notifier = RecordingNotifier()
         let controller = PermissionsController(notifier: notifier)
-        controller.handle(HealthCheckResult(screenRecording: .healthy, microphone: .healthy))
+        controller.handle(HealthCheckResult(microphone: .healthy))
         XCTAssertTrue(notifier.calls.isEmpty)
     }
 
     func testHandleStoresResult() {
         let controller = PermissionsController(notifier: RecordingNotifier())
-        let result = HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+        let result = HealthCheckResult(microphone: .healthy)
         controller.handle(result)
         XCTAssertEqual(controller.health, result)
     }
@@ -39,7 +39,7 @@ final class PermissionsControllerTests: XCTestCase {
     func testHandleDedupsRepeatedProblem() {
         let notifier = RecordingNotifier()
         let controller = PermissionsController(notifier: notifier)
-        let broken = HealthCheckResult(screenRecording: .healthy, microphone: .broken)
+        let broken = HealthCheckResult(microphone: .broken)
         controller.handle(broken)
         controller.handle(broken)
         controller.handle(broken)
@@ -49,8 +49,8 @@ final class PermissionsControllerTests: XCTestCase {
     func testHandleReNotifiesAfterRecovery() {
         let notifier = RecordingNotifier()
         let controller = PermissionsController(notifier: notifier)
-        let broken = HealthCheckResult(screenRecording: .healthy, microphone: .broken)
-        let healthy = HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+        let broken = HealthCheckResult(microphone: .broken)
+        let healthy = HealthCheckResult(microphone: .healthy)
         controller.handle(broken) // notify #1
         controller.handle(healthy) // clears dedup memory
         controller.handle(broken) // notify #2
@@ -60,8 +60,8 @@ final class PermissionsControllerTests: XCTestCase {
     func testHandleNotifiesWhenProblemChanges() {
         let notifier = RecordingNotifier()
         let controller = PermissionsController(notifier: notifier)
-        controller.handle(HealthCheckResult(screenRecording: .healthy, microphone: .broken))
-        controller.handle(HealthCheckResult(screenRecording: .broken, microphone: .healthy))
+        controller.handle(HealthCheckResult(microphone: .broken))
+        controller.handle(HealthCheckResult(microphone: .healthy))
         XCTAssertEqual(notifier.calls.count, 2, "Different problem sets should each trigger a notification")
     }
 
@@ -69,7 +69,6 @@ final class PermissionsControllerTests: XCTestCase {
         let notifier = RecordingNotifier()
         let controller = PermissionsController(notifier: notifier)
         controller.handle(HealthCheckResult(
-            screenRecording: .healthy,
             microphone: .healthy,
             accessibility: .broken,
         ))
@@ -80,7 +79,7 @@ final class PermissionsControllerTests: XCTestCase {
     // MARK: - check: probe + debounce (impossible before extraction)
 
     func testCheckRunsProbeAndStoresHealth() async {
-        let probed = HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+        let probed = HealthCheckResult(microphone: .healthy)
         let controller = PermissionsController(notifier: RecordingNotifier()) { probed }
         await controller.check()
         XCTAssertEqual(controller.health, probed)
@@ -114,6 +113,6 @@ private final class ProbeCounter {
     private(set) var count = 0
     func probe() -> HealthCheckResult {
         count += 1
-        return HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+        return HealthCheckResult(microphone: .healthy)
     }
 }

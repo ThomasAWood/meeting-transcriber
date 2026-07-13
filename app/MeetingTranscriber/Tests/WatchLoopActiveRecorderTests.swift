@@ -67,7 +67,7 @@ final class WatchLoopActiveRecorderTests: XCTestCase {
             noMic: true,
         )
         loop.permissionChecker = {
-            HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+            HealthCheckResult(microphone: .healthy)
         }
 
         nonisolated(unsafe) var captured: (any RecordingProvider)?

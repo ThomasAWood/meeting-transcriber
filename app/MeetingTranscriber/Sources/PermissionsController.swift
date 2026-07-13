@@ -41,7 +41,7 @@ final class PermissionsController {
     func handle(_ result: HealthCheckResult) {
         let previousProblems = health?.problems ?? []
         health = result
-        let line = "[PermissionHealthCheck] screen=\(result.screenRecording) mic=\(result.microphone) " +
+        let line = "[PermissionHealthCheck] mic=\(result.microphone) " +
             "ax=\(result.accessibility) healthy=\(result.isHealthy) problems=\(result.problems)"
         PermissionHealthCheck.debugLog(line)
 

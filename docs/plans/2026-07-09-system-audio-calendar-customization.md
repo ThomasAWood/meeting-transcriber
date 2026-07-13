@@ -351,10 +351,13 @@ high-immediate-value, so it goes **first** among the remaining phases.
 5. **E — Slack/Teams/etc. via PowerAssertionDetector.** ✅ Already wired
    as the fallback (remains secondary to calendar when B enabled). D
    window-title detection is rejected — see F.
-6. **F — Remove Screen Recording permission.** (No longer needed: calendar +
-   power-assertion detection together cover the use case without SR. Phase F
-   remains in plan but deprioritized — the permission surface can be removed
-   in a future cleanup pass after E/F features stabilize.)
+6. **F — Remove Screen Recording permission.** ✅ DONE (2026-07-11)
+   Removed the SR permission surface (Info.plist, permission health checks, Settings UI,
+   RPC snapshot, all SR methods and test coverage). MeetingDetector deleted (window-title
+   detection path removed). PowerAssertionDetector now uses assertion name directly as
+   meeting title (no window lookup). Power-assertion detection and calendar detection
+   together cover the use case without SR. DebugRPCServer screenshot endpoint remains
+   the sole SR touchpoint (opt-in, used by e2e tests).
 
 ## Trade-offs & Risks
 

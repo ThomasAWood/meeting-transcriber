@@ -70,10 +70,6 @@ class PowerAssertionDetector: MeetingDetecting {
     /// Override in tests to inject mock data.
     var assertionProvider: () -> [Int32: [[String: Any]]] = PowerAssertionDetector.systemAssertions
 
-    /// Closure that provides the window list for title lookup. Defaults to CGWindowListCopyWindowInfo.
-    /// Override in tests to inject mock data.
-    var windowListProvider: () -> [[String: Any]] = MeetingDetector.systemWindowList
-
     init(
         patterns: [AssertionPattern] = PowerAssertionDetector.defaultPatterns,
         confirmationCount: Int = 2,
@@ -121,12 +117,14 @@ class PowerAssertionDetector: MeetingDetecting {
                 let meetingPattern = AppMeetingPattern.forAppName(appName) ?? AppMeetingPattern(
                     appName: appName,
                     ownerNames: [match.processName],
-                    meetingPatterns: [],
                 )
-                let title = lookupWindowTitle(appName: appName) ?? match.assertName
+                // No window-title lookup: that path needed Screen Recording permission
+                // (CGWindowListCopyWindowInfo), which this app no longer requests. The
+                // detected title degrades to the power-assertion name (e.g. the process /
+                // app name). Calendar-driven meetings get their title from the event.
                 return DetectedMeeting(
                     pattern: meetingPattern,
-                    windowTitle: title,
+                    windowTitle: match.assertName,
                     ownerName: match.processName,
                     windowPID: match.pid,
                 )
@@ -165,27 +163,6 @@ class PowerAssertionDetector: MeetingDetecting {
         if let appName {
             cooldownUntil[appName] = Date().addingTimeInterval(cooldownDuration)
         }
-    }
-
-    // MARK: - Window Title Lookup
-
-    /// Look up the actual window title for a detected meeting app via CGWindowListCopyWindowInfo.
-    /// Returns the first non-empty, non-idle window title matching the app's owner names.
-    private func lookupWindowTitle(appName: String) -> String? {
-        guard let meetingPattern = AppMeetingPattern.forAppName(appName) else { return nil }
-        let windows = windowListProvider()
-
-        for window in windows {
-            guard let owner = window["kCGWindowOwnerName"] as? String,
-                  meetingPattern.ownerNames.contains(owner),
-                  let title = window["kCGWindowName"] as? String,
-                  !title.isEmpty,
-                  title != appName else {
-                continue
-            }
-            return title
-        }
-        return nil
     }
 
     // MARK: - Private

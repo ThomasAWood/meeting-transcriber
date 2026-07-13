@@ -24,7 +24,7 @@ final class WatchLoopMonitorTests: XCTestCase {
             pidAliveCheck: { _ in false }, // simulated process already exited
         )
         loop.permissionChecker = {
-            HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+            HealthCheckResult(microphone: .healthy)
         }
 
         try await loop.startManualRecording(pid: 42, appName: "Test", title: "T")
@@ -51,7 +51,7 @@ final class WatchLoopMonitorTests: XCTestCase {
             pidAliveCheck: { _ in true }, // process never dies
         )
         loop.permissionChecker = {
-            HealthCheckResult(screenRecording: .healthy, microphone: .healthy)
+            HealthCheckResult(microphone: .healthy)
         }
 
         try await loop.startManualRecording(pid: 42, appName: "Test", title: "T")

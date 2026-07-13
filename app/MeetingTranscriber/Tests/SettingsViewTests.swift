@@ -510,7 +510,6 @@ final class SettingsViewTests: XCTestCase { // swiftlint:disable:this type_body_
 
     func testPermissionsSectionExists() throws {
         let body = try makeAdvanced().inspect()
-        XCTAssertNoThrow(try body.find(text: "Screen Recording"))
         XCTAssertNoThrow(try body.find(text: "Microphone"))
         XCTAssertNoThrow(try body.find(text: "Accessibility"))
     }

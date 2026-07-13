@@ -89,7 +89,6 @@ app/MeetingTranscriber/    # Swift macOS menu bar app (SPM)
     DualSourceRecorder.swift  # App audio (AudioTapLib) + mic recording (captures startTime in start())
     WavHeaderRepair.swift     # Repairs unfinalized WAV files from crash-interrupted recordings (RIFF/data chunk size fix)
     MeetingDetecting.swift # MeetingDetecting protocol + DetectedMeeting model
-    MeetingDetector.swift  # Window title matching (counts each pattern once per poll)
     FFmpegHelper.swift     # ffmpeg CLI detection + audio extraction for MKV/WebM/OGG
     AudioMixer.swift       # Multi-format audio loading (WAV/MP3/M4A/MP4 via AVAsset fallback, MKV/WebM/OGG via ffmpeg) + mixing to 16kHz mono
     LiveAudioResampler.swift # Streams live LiveAudioBuffer through AVAudioConverter → 16 kHz mono Float32 (feeds StreamingTranscriber)
@@ -98,9 +97,9 @@ app/MeetingTranscriber/    # Swift macOS menu bar app (SPM)
     PermissionHealthCheck.swift # Permission health check (TCC verdict + live probe → PermissionStatus)
     PermissionsController.swift # @Observable controller for permission health checks (wired by AppState)
     PermissionRow.swift    # Permission status row UI component
-    Permissions.swift      # Permission checks (mic, screen recording)
+    Permissions.swift      # Permission checks (mic, accessibility)
     ParticipantReader.swift # Reads meeting participants via accessibility
-    MeetingPatterns.swift  # App-specific window title patterns
+    MeetingPatterns.swift  # App-specific power assertion patterns
     PowerAssertionDetector.swift  # Meeting detection via IOKit power assertions (sandbox-safe)
     UpdateChecker.swift    # GitHub release update checker
     Bundle+AppVersion.swift # Bundle extension: appVersion + gitCommitHash from Info.plist
@@ -385,8 +384,7 @@ Use the `/git-workflow` skill. Commit proactively after every logical unit of wo
 - Grace period minimum is 1 second (enforced in `AppSettings.endGrace` setter).
 
 **Detection:**
-- `MeetingDetecting` protocol abstracts detection strategies. Two implementations: `MeetingDetector` (window title matching via `CGWindowListCopyWindowInfo`) and `PowerAssertionDetector` (IOKit power assertions — sandbox-safe, no Screen Recording permission needed).
-- `MeetingDetector` counts each pattern once per poll — prevents over-counting when multiple windows match the same app.
+- `MeetingDetecting` protocol abstracts detection strategies. Two implementations: `PowerAssertionDetector` (IOKit power assertions — sandbox-safe, no Screen Recording permission needed) and `CalendarDetector` (EventKit calendar-driven detection, primary trigger with PowerAssertionDetector as fallback).
 
 **Diarization:**
 - `FluidDiarizer` uses FluidAudio (CoreML/ANE) for on-device speaker diarization — no HuggingFace token needed. Two modes: `.offline` (default) and `.sortformer` (overlap-aware, via `SortformerDiarizer`). Selected via `AppSettings.diarizerMode`.
@@ -436,8 +434,6 @@ Use the `/git-workflow` skill. Commit proactively after every logical unit of wo
 ## Critical Notes
 
 - AudioTapLib (CATapDescription) requires macOS 14.2+ — compiled as SPM library, no separate binary needed
-- Screen Recording permission required for **meeting detection** (window titles via `CGWindowListCopyWindowInfo`)
-- Audio capture (AudioTapLib) does NOT require Screen Recording — uses CATapDescription (purple dot indicator)
 - FluidAudio models are downloaded automatically on first run (~50 MB)
 
 ## E2E Architecture

@@ -4,7 +4,6 @@
 @preconcurrency import ApplicationServices
 import AudioTapLib
 @preconcurrency import AVFoundation
-import CoreGraphics
 import os.log
 
 private let logger = Logger(subsystem: AppPaths.logSubsystem, category: "PermissionHealthCheck")
@@ -17,8 +16,6 @@ enum PermissionStatus: Equatable {
 }
 
 enum PermissionProblem: Equatable {
-    case screenRecordingDenied
-    case screenRecordingBroken
     case microphoneDenied
     case microphoneBroken
     case accessibilityDenied
@@ -26,7 +23,6 @@ enum PermissionProblem: Equatable {
 
     var permissionName: String {
         switch self {
-        case .screenRecordingDenied, .screenRecordingBroken: "Screen Recording"
         case .microphoneDenied, .microphoneBroken: "Microphone"
         case .accessibilityDenied, .accessibilityBroken: "Accessibility"
         }
@@ -34,8 +30,8 @@ enum PermissionProblem: Equatable {
 
     var isBroken: Bool {
         switch self {
-        case .screenRecordingBroken, .microphoneBroken, .accessibilityBroken: true
-        case .screenRecordingDenied, .microphoneDenied, .accessibilityDenied: false
+        case .microphoneBroken, .accessibilityBroken: true
+        case .microphoneDenied, .accessibilityDenied: false
         }
     }
 
@@ -46,10 +42,9 @@ enum PermissionProblem: Equatable {
     }
 
     /// Compact, PII-free token for `os_log` (safe to log with `privacy: .public`):
-    /// e.g. `screen-recording=broken`. The clear-text `description` is user-facing only.
+    /// e.g. `microphone=broken`. The clear-text `description` is user-facing only.
     var logToken: String {
         let key = switch self {
-        case .screenRecordingDenied, .screenRecordingBroken: "screen-recording"
         case .microphoneDenied, .microphoneBroken: "microphone"
         case .accessibilityDenied, .accessibilityBroken: "accessibility"
         }
@@ -58,27 +53,19 @@ enum PermissionProblem: Equatable {
 }
 
 struct HealthCheckResult: Equatable {
-    let screenRecording: PermissionStatus
     let microphone: PermissionStatus
     let accessibility: PermissionStatus
 
     init(
-        screenRecording: PermissionStatus,
         microphone: PermissionStatus,
         accessibility: PermissionStatus = .healthy,
     ) {
-        self.screenRecording = screenRecording
         self.microphone = microphone
         self.accessibility = accessibility
     }
 
     var problems: [PermissionProblem] {
         var result: [PermissionProblem] = []
-        switch screenRecording {
-        case .denied: result.append(.screenRecordingDenied)
-        case .broken: result.append(.screenRecordingBroken)
-        default: break
-        }
         switch microphone {
         case .denied: result.append(.microphoneDenied)
         case .broken: result.append(.microphoneBroken)
@@ -108,65 +95,6 @@ struct HealthCheckResult: Equatable {
 }
 
 enum PermissionHealthCheck {
-    // MARK: - Screen Recording (pure, testable)
-
-    /// Pure decision function for Screen Recording: trusts the TCC system verdict.
-    ///
-    /// - `systemAllowed`: whether macOS says the process has the Screen Recording
-    ///   entitlement (via `CGPreflightScreenCaptureAccess()` or equivalent).
-    ///
-    /// Outcomes:
-    /// - `healthy`: system says yes
-    /// - `denied`: system says no
-    ///
-    /// We deliberately do not down-rank to `.broken` when `CGWindowListCopyWindowInfo`
-    /// returns no foreign window title. Absence of a readable foreign title is not proof
-    /// of a broken grant: on recent macOS the window list omits foreign `kCGWindowName`
-    /// values even when Screen Recording is granted, which produced false `.broken`
-    /// verdicts and a persistent red error badge (issue #446). The window-title probe is
-    /// still computed for diagnostic logging in `checkScreenRecordingLive`.
-    static func checkScreenRecording(systemAllowed: Bool) -> PermissionStatus {
-        systemAllowed ? .healthy : .denied
-    }
-
-    /// Parses a raw window list and reports whether any foreign window has a non-empty title.
-    static func hasForeignWindowWithTitle(
-        windowList: [[String: Any]]?, // swiftlint:disable:this discouraged_optional_collection
-        ownPID: Int32,
-    ) -> Bool {
-        guard let windows = windowList else { return false }
-        return windows.contains { info in
-            guard let pid = info[kCGWindowOwnerPID as String] as? Int32,
-                  pid != ownPID
-            else { return false }
-            let name = info[kCGWindowName as String] as? String
-            return name != nil && !(name?.isEmpty ?? true)
-        }
-    }
-
-    static func checkScreenRecordingLive() -> PermissionStatus {
-        // CGPreflightScreenCaptureAccess does NOT trigger the TCC prompt — it only reports status.
-        let systemAllowed = CGPreflightScreenCaptureAccess()
-
-        let list = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly],
-            kCGNullWindowID,
-        ) as? [[String: Any]]
-        let ownPID = ProcessInfo.processInfo.processIdentifier
-        let windowCount = list?.count ?? -1
-        let foreignCount = (list ?? []).count { info in
-            (info[kCGWindowOwnerPID as String] as? Int32) != ownPID
-        }
-        let hasForeignTitle = hasForeignWindowWithTitle(windowList: list, ownPID: ownPID)
-
-        // `hasForeignTitle`/`foreignCount`/`windowCount` are no longer part of the
-        // verdict (see `checkScreenRecording`); they stay for diagnostic logging.
-        let result = checkScreenRecording(systemAllowed: systemAllowed)
-        debugLog("checkScreenRecordingLive: systemAllowed=\(systemAllowed) ownPID=\(ownPID) " +
-            "windows=\(windowCount) foreign=\(foreignCount) hasForeignTitle=\(hasForeignTitle) → \(result)")
-        return result
-    }
-
     // MARK: - Microphone (pure, testable)
 
     static func checkMicrophone(
@@ -398,22 +326,19 @@ enum PermissionHealthCheck {
     // MARK: - Overall Health
 
     static func overallHealth(
-        screenRecording: PermissionStatus,
         microphone: PermissionStatus,
         accessibility: PermissionStatus = .healthy,
     ) -> HealthCheckResult {
         HealthCheckResult(
-            screenRecording: screenRecording,
             microphone: microphone,
             accessibility: accessibility,
         )
     }
 
     static func runLive() async -> HealthCheckResult {
-        let sr = checkScreenRecordingLive()
         let mic = await checkMicrophoneLive()
         let ax = checkAccessibilityLive()
-        let result = overallHealth(screenRecording: sr, microphone: mic, accessibility: ax)
+        let result = overallHealth(microphone: mic, accessibility: ax)
         if !result.isHealthy {
             logger.warning("Permission health check failed: \(result.logSummary, privacy: .public)")
         }
