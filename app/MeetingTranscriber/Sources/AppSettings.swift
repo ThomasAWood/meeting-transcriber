@@ -486,6 +486,8 @@ final class AppSettings {
             relativeTo: nil,
         ) else { return }
         transcriptsDirBookmark = data
+        // Trigger UI update by marking effectiveTranscriptsDir as accessed
+        _ = effectiveTranscriptsDir
     }
 
     /// Store the user-selected summaries directory.
@@ -496,6 +498,8 @@ final class AppSettings {
             relativeTo: nil,
         ) else { return }
         summariesDirBookmark = data
+        // Trigger UI update by marking effectiveSummariesDir as accessed
+        _ = effectiveSummariesDir
     }
 
     /// Store the user-selected recordings directory.
@@ -506,6 +510,8 @@ final class AppSettings {
             relativeTo: nil,
         ) else { return }
         recordingsDirBookmark = data
+        // Trigger UI update by marking effectiveRecordingsDir as accessed
+        _ = effectiveRecordingsDir
     }
 
     /// Store the user-selected custom prompt file.
@@ -516,6 +522,8 @@ final class AppSettings {
             relativeTo: nil,
         ) else { return }
         customPromptFileBookmark = data
+        // Trigger UI update by marking effectiveCustomPromptFile as accessed
+        _ = effectiveCustomPromptFile
     }
 
     /// Clear the custom output directories, reverting to defaults.
@@ -528,21 +536,29 @@ final class AppSettings {
     /// Clear the custom transcripts directory.
     func clearTranscriptsDir() {
         transcriptsDirBookmark = nil
+        // Trigger UI update by marking effectiveTranscriptsDir as accessed
+        _ = effectiveTranscriptsDir
     }
 
     /// Clear the custom summaries directory.
     func clearSummariesDir() {
         summariesDirBookmark = nil
+        // Trigger UI update by marking effectiveSummariesDir as accessed
+        _ = effectiveSummariesDir
     }
 
     /// Clear the custom recordings directory.
     func clearRecordingsDir() {
         recordingsDirBookmark = nil
+        // Trigger UI update by marking effectiveRecordingsDir as accessed
+        _ = effectiveRecordingsDir
     }
 
     /// Clear the custom prompt file.
     func clearCustomPromptFile() {
         customPromptFileBookmark = nil
+        // Trigger UI update by marking effectiveCustomPromptFile as accessed
+        _ = effectiveCustomPromptFile
     }
 
     /// The effective transcripts directory: custom choice or default.
