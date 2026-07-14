@@ -28,5 +28,7 @@
     <string>Meeting Transcriber needs microphone access to record meeting audio for transcription.</string>
     <key>NSAccessibilityUsageDescription</key>
     <string>Meeting Transcriber uses Accessibility to detect mute state and read meeting participants.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Meeting Transcriber needs calendar access to automatically start recordings based on your scheduled meetings.</string>
 </dict>
 </plist>

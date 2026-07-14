@@ -91,14 +91,18 @@ struct CalendarDetectionSection: View {
     /// list. Refreshing unconditionally mutates `calendars` so the view
     /// re-renders and re-reads `eventSource.isAuthorized` after the async grant
     /// attempt — including the denied case.
+    @MainActor
     private func ensureAccessThenReload() async {
         if !eventSource.isAuthorized {
             _ = await eventSource.requestAccess()
+            // Small delay to let the permission dialog be dismissed and EventKit update its state
+            try? await Task.sleep(for: .milliseconds(500))
         }
         reloadCalendars()
     }
 
     /// Load the calendar list from EventKit (empty when not authorized).
+    @MainActor
     private func reloadCalendars() {
         calendars = eventSource.availableCalendars()
     }
