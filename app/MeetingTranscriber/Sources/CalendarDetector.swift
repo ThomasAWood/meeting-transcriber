@@ -50,16 +50,29 @@ enum CalendarDetectorLogic {
     static func activeEvent(at now: Date, events: [CalendarEventInfo], enabledCalendarIDs: Set<String>) -> CalendarEventInfo? {
         let filtered = events.filter { event in
             // Skip all-day or cancelled events
-            guard !event.isAllDay, !event.isCancelled else { return false }
+            guard !event.isAllDay, !event.isCancelled else {
+                Logger(subsystem: AppPaths.logSubsystem, category: "CalendarDetector")
+                    .debug("Skipping event: \(event.title, privacy: .private) (allDay=\(event.isAllDay), cancelled=\(event.isCancelled))")
+                return false
+            }
 
             // Check if event is within the time window (start <= now < end)
-            guard event.start <= now, now < event.end else { return false }
+            guard event.start <= now, now < event.end else {
+                return false
+            }
 
             // If an allowlist is provided, only include events from those calendars
             if !enabledCalendarIDs.isEmpty {
-                return enabledCalendarIDs.contains(event.calendarID)
+                let included = enabledCalendarIDs.contains(event.calendarID)
+                if !included {
+                    Logger(subsystem: AppPaths.logSubsystem, category: "CalendarDetector")
+                        .debug("Event not in allowlist: \(event.title, privacy: .private) (calendarID: \(event.calendarID))")
+                }
+                return included
             }
 
+            Logger(subsystem: AppPaths.logSubsystem, category: "CalendarDetector")
+                .debug("Active event: \(event.title, privacy: .private) (\(event.start) - \(event.end))")
             return true
         }
 
@@ -121,7 +134,10 @@ final class CalendarEventSource: @unchecked Sendable {
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
         let ekEvents = store.events(matching: predicate)
 
-        return ekEvents.map { event in
+        Logger(subsystem: AppPaths.logSubsystem, category: "CalendarDetector")
+            .info("EventKit returned \(ekEvents.count) events for range \(start) to \(end)")
+
+        let events = ekEvents.map { event in
             CalendarEventInfo(
                 id: event.eventIdentifier,
                 title: event.title ?? "",
@@ -132,6 +148,16 @@ final class CalendarEventSource: @unchecked Sendable {
                 isCancelled: event.status == .canceled
             )
         }
+
+        // Log sample events for debugging
+        let sampleCount = min(events.count, 5)
+        for i in 0..<sampleCount {
+            let event = events[i]
+            Logger(subsystem: AppPaths.logSubsystem, category: "CalendarDetector")
+                .debug("Sample event \(i+1): \(event.title, privacy: .private) (\(event.start) - \(event.end), allDay=\(event.isAllDay), cancelled=\(event.isCancelled))")
+        }
+
+        return events
     }
 
     /// Returns a list of available calendars.
@@ -187,9 +213,12 @@ final class CalendarDetector: MeetingDetecting {
             let end = now.addingTimeInterval(86400)  // 24 hours after
             cachedEvents = eventsProvider(start, end)
             lastFetchDate = now
+            Logger(subsystem: AppPaths.logSubsystem, category: "CalendarDetector")
+                .info("Fetched \(self.cachedEvents.count) calendar events (window: \(start) to \(end))")
         }
 
-        guard let activeEvent = CalendarDetectorLogic.activeEvent(at: now, events: cachedEvents, enabledCalendarIDs: enabledCalendarIDs()) else {
+        let enabledIDs = enabledCalendarIDs()
+        guard let activeEvent = CalendarDetectorLogic.activeEvent(at: now, events: self.cachedEvents, enabledCalendarIDs: enabledIDs) else {
             if currentEvent != nil {
                 Logger(subsystem: AppPaths.logSubsystem, category: "CalendarDetector")
                     .info("Meeting ended (no active calendar event found).")

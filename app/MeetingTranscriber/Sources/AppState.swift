@@ -167,6 +167,9 @@ final class AppState {
             channelHealth: channelHealth,
             permissions: permissions,
             liveTranscription: liveTranscription,
+            makeDetector: { [settings] in
+                CombinedDetector.production(settings: settings)
+            }
         )
 
         #if !APPSTORE
