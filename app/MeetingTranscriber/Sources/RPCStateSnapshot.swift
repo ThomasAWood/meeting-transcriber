@@ -226,12 +226,12 @@
             struct Detection: Codable {
                 let watchTeams: Bool
                 let watchZoom: Bool
-                let watchWebex: Bool
+                let watchSlack: Bool
                 let autoWatch: Bool
                 let pollIntervalSeconds: Double
 
                 static let empty = Self(
-                    watchTeams: false, watchZoom: false, watchWebex: false,
+                    watchTeams: false, watchZoom: false, watchSlack: false,
                     autoWatch: false, pollIntervalSeconds: 0,
                 )
             }

@@ -6,7 +6,7 @@ private let logger = Logger(subsystem: AppPaths.logSubsystem, category: "PowerAs
 
 /// Detects active meetings via IOKit power assertions.
 ///
-/// Meeting apps (Teams, Zoom, Webex) create `PreventUserIdleDisplaySleep`
+/// Meeting apps (Teams, Zoom, Slack) create `PreventUserIdleDisplaySleep`
 /// assertions during calls. This detector reads those assertions via
 /// `IOPMCopyAssertionsByProcess()` — sandbox-safe, no entitlement needed.
 @Observable
@@ -46,9 +46,9 @@ class PowerAssertionDetector: MeetingDetecting {
             assertionTypes: ["PreventUserIdleDisplaySleep", "NoDisplaySleepAssertion"],
         ),
         AssertionPattern(
-            appName: "Webex",
-            processNames: ["Webex", "Cisco Webex Meetings", "Meeting Center"],
-            keywords: ["webex"],
+            appName: "Slack",
+            processNames: ["Slack"],
+            keywords: ["slack", "huddle", "call"],
         ),
         AssertionPattern(
             appName: AppMeetingPattern.simulator.appName,

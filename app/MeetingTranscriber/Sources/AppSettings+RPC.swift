@@ -33,7 +33,7 @@
             RPCStateSnapshot.Settings.Detection(
                 watchTeams: watchTeams,
                 watchZoom: watchZoom,
-                watchWebex: watchWebex,
+                watchSlack: watchSlack,
                 autoWatch: autoWatch,
                 pollIntervalSeconds: pollInterval,
             )

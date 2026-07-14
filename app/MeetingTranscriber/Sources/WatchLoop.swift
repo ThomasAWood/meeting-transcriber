@@ -320,6 +320,12 @@ class WatchLoop {
             next.detail = "Recording: \(title)"
         }
 
+        // Notify user that recording has started
+        notifier.notify(
+            title: "Recording Started",
+            body: "Now recording: \(title)"
+        )
+
         let recorder = await recorderFactory()
         try recorder.start(
             appPID: meeting.windowPID,
@@ -538,7 +544,7 @@ class WatchLoop {
 
     /// Strip app suffixes from meeting titles for cleaner display.
     static func cleanTitle(_ title: String) -> String {
-        let suffixes = [" | Microsoft Teams", " - Zoom", " - Webex"]
+        let suffixes = [" | Microsoft Teams", " - Zoom", " | Slack"]
         for suffix in suffixes where title.hasSuffix(suffix) {
             return String(title.dropLast(suffix.count))
         }

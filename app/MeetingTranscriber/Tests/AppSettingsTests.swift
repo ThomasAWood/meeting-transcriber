@@ -48,7 +48,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.numSpeakers, 0)
         XCTAssertTrue(settings.watchTeams)
         XCTAssertTrue(settings.watchZoom)
-        XCTAssertTrue(settings.watchWebex)
+        XCTAssertTrue(settings.watchSlack)
         XCTAssertFalse(settings.noMic)
         XCTAssertEqual(settings.micName, "Me")
         XCTAssertTrue(settings.diarize)
@@ -160,7 +160,7 @@ final class AppSettingsTests: XCTestCase {
     func testWatchAppsAllDisabled() {
         settings.watchTeams = false
         settings.watchZoom = false
-        settings.watchWebex = false
+        settings.watchSlack = false
         XCTAssertEqual(settings.watchApps, [])
     }
 

@@ -220,7 +220,7 @@
             collect(object, prefix: "")
 
             let allowlist: Set = [
-                "detection.watchTeams", "detection.watchZoom", "detection.watchWebex",
+                "detection.watchTeams", "detection.watchZoom", "detection.watchSlack",
                 "detection.autoWatch", "detection.pollIntervalSeconds",
                 "recording.endGraceSeconds", "recording.noMic", "recording.recordOnly",
                 "recording.micDeviceUID", "recording.micName",

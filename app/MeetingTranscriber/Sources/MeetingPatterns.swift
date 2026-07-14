@@ -33,9 +33,9 @@ extension AppMeetingPattern {
         ownerNames: ["zoom.us"],
     )
 
-    static let webex = AppMeetingPattern(
-        appName: "Webex",
-        ownerNames: ["Webex", "Cisco Webex Meetings"],
+    static let slack = AppMeetingPattern(
+        appName: "Slack",
+        ownerNames: ["Slack"],
     )
 
     /// Debug simulator for testing the full pipeline without a real meeting app.
@@ -45,7 +45,7 @@ extension AppMeetingPattern {
         ownerNames: ["meeting-simulator"],
     )
 
-    static let all: [AppMeetingPattern] = [teams, zoom, webex, simulator]
+    static let all: [AppMeetingPattern] = [teams, zoom, slack, simulator]
 
     static let byName: [String: AppMeetingPattern] = {
         var dict: [String: AppMeetingPattern] = [:]

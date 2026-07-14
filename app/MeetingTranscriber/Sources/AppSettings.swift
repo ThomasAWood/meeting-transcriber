@@ -111,8 +111,8 @@ final class AppSettings {
         didSet { defaults.set(watchZoom, forKey: "watchZoom") }
     }
 
-    var watchWebex: Bool {
-        didSet { defaults.set(watchWebex, forKey: "watchWebex") }
+    var watchSlack: Bool {
+        didSet { defaults.set(watchSlack, forKey: "watchSlack") }
     }
 
     /// Auto-start watching on app launch.
@@ -622,7 +622,7 @@ final class AppSettings {
         var apps: [String] = []
         if watchTeams { apps.append("Microsoft Teams") }
         if watchZoom { apps.append("Zoom") }
-        if watchWebex { apps.append("Webex") }
+        if watchSlack { apps.append("Slack") }
         return apps
     }
 
@@ -633,7 +633,7 @@ final class AppSettings {
 
         watchTeams = defaults.object(forKey: "watchTeams") as? Bool ?? true
         watchZoom = defaults.object(forKey: "watchZoom") as? Bool ?? true
-        watchWebex = defaults.object(forKey: "watchWebex") as? Bool ?? true
+        watchSlack = defaults.object(forKey: "watchSlack") as? Bool ?? true
         autoWatch = defaults.object(forKey: "autoWatch") as? Bool ?? false
         calendarDetectionEnabled = defaults.object(forKey: "calendarDetectionEnabled") as? Bool ?? false
 
